@@ -7,10 +7,11 @@ import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
+import { POST_AUTH_REDIRECT_PATH } from "@/lib/navigation";
 
 export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const navigate = useNavigate({
-    from: "/",
+    from: "/dashboard",
   });
 
   const form = useForm({
@@ -29,28 +30,34 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
         {
           onSuccess: () => {
             navigate({
-              to: "/dashboard",
+              to: POST_AUTH_REDIRECT_PATH,
             });
-            toast.success("Sign up successful");
+            toast.success("Tu cuenta ya está lista. Vamos a empezar la quiniela.");
           },
-          onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
+          onError: () => {
+            toast.error("No pudimos crear tu cuenta. Inténtalo otra vez en un momento.");
           },
         },
       );
     },
     validators: {
       onSubmit: z.object({
-        name: z.string().min(2, "Name must be at least 2 characters"),
-        email: z.email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters"),
+        name: z.string().min(2, "Escribe el nombre con el que te reconocerá tu familia."),
+        email: z.email("Escribe un correo válido para crear tu cuenta."),
+        password: z.string().min(8, "Elige una contraseña de al menos 8 caracteres."),
       }),
     },
   });
 
   return (
-    <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Create Account</h1>
+    <div className="mx-auto mt-10 w-full max-w-md rounded-[2rem] border border-border/70 bg-card/90 p-6 shadow-sm">
+      <div className="mb-6 space-y-2 text-center">
+        <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">Empieza hoy</p>
+        <h1 className="text-3xl font-bold tracking-tight">Crea tu cuenta para jugar en familia</h1>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Guarda tus pronósticos, sigue la tabla y acompaña cada partido con el resto de la familia.
+        </p>
+      </div>
 
       <form
         onSubmit={(e) => {
@@ -64,10 +71,11 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
           <form.Field name="name">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Name</Label>
+                <Label htmlFor={field.name}>Tu nombre</Label>
                 <Input
                   id={field.name}
                   name={field.name}
+                  placeholder="Ana"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -86,11 +94,12 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
           <form.Field name="email">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
+                <Label htmlFor={field.name}>Correo electrónico</Label>
                 <Input
                   id={field.name}
                   name={field.name}
                   type="email"
+                  placeholder="familia@ejemplo.com"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -109,11 +118,12 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
           <form.Field name="password">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
+                <Label htmlFor={field.name}>Contraseña</Label>
                 <Input
                   id={field.name}
                   name={field.name}
                   type="password"
+                  placeholder="Elige una contraseña"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -133,7 +143,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
         >
           {({ canSubmit, isSubmitting }) => (
             <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Sign Up"}
+              {isSubmitting ? "Creando cuenta..." : "Crear cuenta y entrar"}
             </Button>
           )}
         </form.Subscribe>
@@ -145,7 +155,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
           onClick={onSwitchToSignIn}
           className="text-indigo-600 hover:text-indigo-800"
         >
-          Already have an account? Sign In
+          ¿Ya tienes cuenta? Entra aquí
         </Button>
       </div>
     </div>

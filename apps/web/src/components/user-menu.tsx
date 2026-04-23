@@ -13,19 +13,28 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 
 import { authClient } from "@/lib/auth-client";
+import { AUTH_ENTRY_PATH } from "@/lib/navigation";
 
 export default function UserMenu() {
   const navigate = useNavigate();
   const user = useQuery(api.auth.getCurrentUser);
+  const firstName = user?.name?.trim().split(/\s+/)[0] ?? "Cuenta";
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" />}>{user?.name}</DropdownMenuTrigger>
+      <DropdownMenuTrigger render={<Button variant="outline" />}>Hola, {firstName}</DropdownMenuTrigger>
       <DropdownMenuContent className="bg-card">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel>Tu cuenta</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>{user?.email}</DropdownMenuItem>
+          <DropdownMenuItem className="block cursor-default focus:bg-transparent focus:text-foreground">
+            <p className="font-medium text-foreground">{user.name}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onClick={() => {
@@ -33,14 +42,14 @@ export default function UserMenu() {
                 fetchOptions: {
                   onSuccess: () => {
                     navigate({
-                      to: "/dashboard",
+                      to: AUTH_ENTRY_PATH,
                     });
                   },
                 },
               });
             }}
           >
-            Sign Out
+            Cerrar sesión
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
