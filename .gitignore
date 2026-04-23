@@ -40,6 +40,10 @@ lerna-debug.log*
 # Better-T-Stack
 .alchemy
 
+# Local agent workspaces
+.worktrees/
+.superpowers/
+
 # Testing
 coverage
 .nyc_output
