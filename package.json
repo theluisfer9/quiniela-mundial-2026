@@ -7,6 +7,7 @@
       "packages/*"
     ],
     "catalog": {
+      "@types/node": "^24.3.0",
       "dotenv": "^17.2.2",
       "zod": "^4.1.13",
       "typescript": "^6",
@@ -35,6 +36,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@cloudflare/workers-types": "^4.20251213.0",
     "@quiniela-mundial-2026/config": "workspace:*",
     "typescript": "catalog:"

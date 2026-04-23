@@ -12,6 +12,7 @@
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20251213.0",
         "@quiniela-mundial-2026/config": "workspace:*",
+        "@types/node": "catalog:",
         "typescript": "catalog:",
       },
     },
@@ -118,6 +119,7 @@
       },
       "devDependencies": {
         "@quiniela-mundial-2026/config": "workspace:*",
+        "@types/node": "catalog:",
         "@types/react": "^19.2.10",
         "@types/react-dom": "catalog:",
         "tailwindcss": "^4.1.18",
@@ -127,6 +129,7 @@
   },
   "catalog": {
     "@convex-dev/better-auth": "^0.11.4",
+    "@types/node": "^24.3.0",
     "@types/react-dom": "^19.2.3",
     "alchemy": "^0.91.2",
     "better-auth": "1.5.3",

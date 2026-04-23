@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@quiniela-mundial-2026/config": "workspace:*",
+    "@types/node": "catalog:",
     "@types/react": "^19.2.10",
     "@types/react-dom": "catalog:",
     "tailwindcss": "^4.1.18",
