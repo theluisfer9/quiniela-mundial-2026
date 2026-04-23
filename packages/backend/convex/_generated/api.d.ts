@@ -11,7 +11,16 @@
 import type * as auth from "../auth.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
+import type * as lib_currentUser from "../lib/currentUser.js";
+import type * as lib_profiles from "../lib/profiles.js";
+import type * as lib_scores from "../lib/scores.js";
+import type * as lib_scoring from "../lib/scoring.js";
+import type * as lib_visibility from "../lib/visibility.js";
+import type * as matches from "../matches.js";
+import type * as predictions from "../predictions.js";
 import type * as privateData from "../privateData.js";
+import type * as profiles from "../profiles.js";
+import type * as standings from "../standings.js";
 
 import type {
   ApiFromModules,
@@ -23,7 +32,16 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   healthCheck: typeof healthCheck;
   http: typeof http;
+  "lib/currentUser": typeof lib_currentUser;
+  "lib/profiles": typeof lib_profiles;
+  "lib/scores": typeof lib_scores;
+  "lib/scoring": typeof lib_scoring;
+  "lib/visibility": typeof lib_visibility;
+  matches: typeof matches;
+  predictions: typeof predictions;
   privateData: typeof privateData;
+  profiles: typeof profiles;
+  standings: typeof standings;
 }>;
 
 /**

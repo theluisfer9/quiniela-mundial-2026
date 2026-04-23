@@ -1,15 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { convexTest } from "convex-test";
+import { convexTest, type TestConvex } from "convex-test";
 
+import { api } from "./_generated/api";
 import schema from "./schema";
-import { listHomeMatches } from "./matches";
-import { listMyPredictions, upsertPrediction } from "./predictions";
-import { ensureCurrentProfile } from "./profiles";
-import { getHomeStandings } from "./standings";
 
 const NOW = new Date("2026-06-12T12:00:00.000Z").getTime();
 
-type TestInstance = ReturnType<typeof convexTest<typeof schema>>;
+type TestInstance = TestConvex<typeof schema>;
 
 const testModules = {
   "./_generated/api.ts": async () => ({}),
@@ -64,7 +61,7 @@ describe("Task 2 handlers", () => {
     it("rejects unauthenticated callers", async () => {
       const t = createTest();
 
-      await expect(t.mutation(ensureCurrentProfile, {})).rejects.toThrow("Not authenticated");
+      await expect(t.mutation(api.profiles.ensureCurrentProfile, {})).rejects.toThrow("Not authenticated");
     });
 
     it("creates a profile once and reuses it on later calls", async () => {
@@ -75,8 +72,8 @@ describe("Task 2 handlers", () => {
         tokenIdentifier: "test|ana",
       });
 
-      const first = await asAna.mutation(ensureCurrentProfile, {});
-      const second = await asAna.mutation(ensureCurrentProfile, {});
+      const first = await asAna.mutation(api.profiles.ensureCurrentProfile, {});
+      const second = await asAna.mutation(api.profiles.ensureCurrentProfile, {});
 
       expect(first.created).toBe(true);
       expect(second.created).toBe(false);
@@ -96,7 +93,7 @@ describe("Task 2 handlers", () => {
         tokenIdentifier: "test|anonymous",
       });
 
-      const profile = await asAnonymous.mutation(ensureCurrentProfile, {});
+      const profile = await asAnonymous.mutation(api.profiles.ensureCurrentProfile, {});
 
       expect(profile.displayName).toBe("Participante");
     });
@@ -117,7 +114,7 @@ describe("Task 2 handlers", () => {
       );
 
       await expect(
-        t.mutation(upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n }),
+        t.mutation(api.predictions.upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n }),
       ).rejects.toThrow("Not authenticated");
     });
 
@@ -136,7 +133,7 @@ describe("Task 2 handlers", () => {
       );
 
       await expect(
-        asAna.mutation(upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n }),
+        asAna.mutation(api.predictions.upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n }),
       ).rejects.toThrow("Match is locked");
     });
 
@@ -155,7 +152,7 @@ describe("Task 2 handlers", () => {
       );
 
       await expect(
-        asAna.mutation(upsertPrediction, { matchId, homeScore: -1n, awayScore: 0n }),
+        asAna.mutation(api.predictions.upsertPrediction, { matchId, homeScore: -1n, awayScore: 0n }),
       ).rejects.toThrow("Score must be between 0 and 20");
     });
 
@@ -173,8 +170,16 @@ describe("Task 2 handlers", () => {
         }),
       );
 
-      const first = await asAna.mutation(upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n });
-      const second = await asAna.mutation(upsertPrediction, { matchId, homeScore: 2n, awayScore: 1n });
+      const first = await asAna.mutation(api.predictions.upsertPrediction, {
+        matchId,
+        homeScore: 1n,
+        awayScore: 0n,
+      });
+      const second = await asAna.mutation(api.predictions.upsertPrediction, {
+        matchId,
+        homeScore: 2n,
+        awayScore: 1n,
+      });
 
       expect(first.status).toBe("saved");
       expect(second.status).toBe("saved");
@@ -216,10 +221,14 @@ describe("Task 2 handlers", () => {
         }),
       );
 
-      await asAna.mutation(upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n });
-      await asBeto.mutation(upsertPrediction, { matchId: otherMatchId, homeScore: 0n, awayScore: 2n });
+      await asAna.mutation(api.predictions.upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n });
+      await asBeto.mutation(api.predictions.upsertPrediction, {
+        matchId: otherMatchId,
+        homeScore: 0n,
+        awayScore: 2n,
+      });
 
-      const mine = await asAna.query(listMyPredictions, {});
+      const mine = await asAna.query(api.predictions.listMyPredictions, {});
 
       expect(mine).toEqual([
         {
@@ -238,8 +247,8 @@ describe("Task 2 handlers", () => {
       const asAna = t.withIdentity({ name: "Ana", email: "ana@example.com", tokenIdentifier: "test|ana" });
       const asBeto = t.withIdentity({ name: "Beto", email: "beto@example.com", tokenIdentifier: "test|beto" });
       const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
-      await asAna.mutation(ensureCurrentProfile, {});
-      await asBeto.mutation(ensureCurrentProfile, {});
+      await asAna.mutation(api.profiles.ensureCurrentProfile, {});
+      await asBeto.mutation(api.profiles.ensureCurrentProfile, {});
 
       const matchOneId = await t.run((ctx) =>
         ctx.db.insert("matches", {
@@ -295,7 +304,7 @@ describe("Task 2 handlers", () => {
         });
       });
 
-      const standings = await asAna.query(getHomeStandings, {});
+      const standings = await asAna.query(api.standings.getHomeStandings, {});
 
       expect(standings).toEqual([
         {
