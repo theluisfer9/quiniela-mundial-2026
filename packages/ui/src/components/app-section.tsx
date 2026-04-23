@@ -1,0 +1,56 @@
+import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
+import * as React from "react";
+
+type AppSectionProps = React.ComponentProps<"section"> & {
+  eyebrow?: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  contentClassName?: string;
+};
+
+function AppSection({
+  className,
+  eyebrow,
+  title,
+  description,
+  action,
+  children,
+  contentClassName,
+  ...props
+}: AppSectionProps) {
+  return (
+    <section
+      data-slot="app-section"
+      className={cn(
+        "rounded-4xl border border-border/80 bg-card/95 px-4 py-5 shadow-[0_16px_50px_-28px_color-mix(in_oklab,var(--color-foreground)_18%,transparent)] sm:px-6 sm:py-6",
+        className,
+      )}
+      {...props}
+    >
+      <div className="flex flex-col gap-4 sm:gap-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            {eyebrow ? (
+              <p className="text-[0.7rem] font-semibold tracking-[0.24em] text-primary uppercase">
+                {eyebrow}
+              </p>
+            ) : null}
+            <div className="space-y-1.5">
+              <h2 className="text-balance text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                {title}
+              </h2>
+              {description ? (
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+              ) : null}
+            </div>
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+        <div className={cn("space-y-4", contentClassName)}>{children}</div>
+      </div>
+    </section>
+  );
+}
+
+export { AppSection };
