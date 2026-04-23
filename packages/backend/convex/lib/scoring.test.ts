@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { calculatePredictionPoints } from "./scoring";
+import { buildStandingsRows, calculatePredictionPoints } from "./scoring";
 
 describe("calculatePredictionPoints", () => {
   it("gives 3 points for an exact score", () => {
@@ -56,5 +56,123 @@ describe("calculatePredictionPoints", () => {
         actualAway: 0,
       }),
     ).toBe(1);
+  });
+});
+
+describe("buildStandingsRows", () => {
+  it("aggregates finished-match points into ranked home standings rows", () => {
+    expect(
+      buildStandingsRows({
+        currentUserId: "user-2",
+        profiles: [
+          { userId: "user-1", name: "Ana" },
+          { userId: "user-2", name: "Beto" },
+          { userId: "user-3", name: "Carla" },
+        ],
+        matches: [
+          { id: "match-1", homeScore: 2, awayScore: 1 },
+          { id: "match-2", homeScore: 0, awayScore: 1 },
+        ],
+        predictions: [
+          { userId: "user-1", matchId: "match-1", homeScore: 2, awayScore: 1 },
+          { userId: "user-1", matchId: "match-2", homeScore: 1, awayScore: 1 },
+          { userId: "user-2", matchId: "match-1", homeScore: 3, awayScore: 1 },
+          { userId: "user-2", matchId: "match-2", homeScore: 0, awayScore: 1 },
+          { userId: "user-3", matchId: "match-1", homeScore: 1, awayScore: 0 },
+          { userId: "user-3", matchId: "match-2", homeScore: 2, awayScore: 1 },
+        ],
+      }),
+    ).toEqual([
+      {
+        rank: 1,
+        name: "Beto",
+        points: 4,
+        rankDelta: 1,
+        isCurrentUser: true,
+      },
+      {
+        rank: 2,
+        name: "Ana",
+        points: 3,
+        rankDelta: -1,
+        isCurrentUser: false,
+      },
+      {
+        rank: 3,
+        name: "Carla",
+        points: 1,
+        rankDelta: 0,
+        isCurrentUser: false,
+      },
+    ]);
+  });
+
+  it("breaks ties deterministically by name", () => {
+    expect(
+      buildStandingsRows({
+        currentUserId: "user-3",
+        profiles: [
+          { userId: "user-2", name: "Beto" },
+          { userId: "user-1", name: "Ana" },
+          { userId: "user-3", name: "Carla" },
+        ],
+        matches: [{ id: "match-1", homeScore: 1, awayScore: 0 }],
+        predictions: [
+          { userId: "user-1", matchId: "match-1", homeScore: 2, awayScore: 0 },
+          { userId: "user-2", matchId: "match-1", homeScore: 3, awayScore: 1 },
+        ],
+      }),
+    ).toEqual([
+      {
+        rank: 1,
+        name: "Ana",
+        points: 1,
+        rankDelta: 0,
+        isCurrentUser: false,
+      },
+      {
+        rank: 2,
+        name: "Beto",
+        points: 1,
+        rankDelta: 0,
+        isCurrentUser: false,
+      },
+      {
+        rank: 3,
+        name: "Carla",
+        points: 0,
+        rankDelta: 0,
+        isCurrentUser: true,
+      },
+    ]);
+  });
+
+  it("breaks same-name ties deterministically by user id", () => {
+    expect(
+      buildStandingsRows({
+        currentUserId: "user-2",
+        profiles: [
+          { userId: "user-2", name: "Alex" },
+          { userId: "user-1", name: "Alex" },
+        ],
+        matches: [],
+        predictions: [],
+      }),
+    ).toEqual([
+      {
+        rank: 1,
+        name: "Alex",
+        points: 0,
+        rankDelta: 0,
+        isCurrentUser: false,
+      },
+      {
+        rank: 2,
+        name: "Alex",
+        points: 0,
+        rankDelta: 0,
+        isCurrentUser: true,
+      },
+    ]);
   });
 });
