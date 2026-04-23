@@ -1,0 +1,43 @@
+{
+  "name": "quiniela-mundial-2026",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.2.2",
+      "zod": "^4.1.13",
+      "typescript": "^6",
+      "next-themes": "^0.4.6",
+      "convex": "^1.33.1",
+      "better-auth": "1.5.3",
+      "@convex-dev/better-auth": "^0.11.4",
+      "@types/react-dom": "^19.2.3",
+      "alchemy": "^0.91.2"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "check-types": "bun run --filter '*' check-types",
+    "dev:web": "bun run --filter web dev",
+    "dev:server": "bun run --filter @quiniela-mundial-2026/backend dev",
+    "dev:setup": "bun run --filter @quiniela-mundial-2026/backend dev:setup",
+    "deploy": "bun run --filter @quiniela-mundial-2026/infra deploy",
+    "destroy": "bun run --filter @quiniela-mundial-2026/infra destroy"
+  },
+  "dependencies": {
+    "@quiniela-mundial-2026/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251213.0",
+    "@quiniela-mundial-2026/config": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "packageManager": "bun@1.3.10"
+}
