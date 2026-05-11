@@ -13,6 +13,9 @@ export default defineSchema({
     code: v.string(),
     name: v.string(),
     flagEmoji: v.optional(v.string()),
+    groupCode: v.optional(v.string()),
+    worldRanking: v.optional(v.number()),
+    isHost: v.optional(v.boolean()),
   }).index("by_code", ["code"]),
 
   matches: defineTable({
@@ -20,6 +23,8 @@ export default defineSchema({
     homeTeamId: v.id("teams"),
     awayTeamId: v.id("teams"),
     stageLabel: v.string(),
+    matchNumber: v.optional(v.number()),
+    venue: v.optional(v.string()),
     homeScore: v.optional(persistedScore),
     awayScore: v.optional(persistedScore),
     status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
