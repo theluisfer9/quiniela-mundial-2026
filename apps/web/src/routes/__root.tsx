@@ -23,10 +23,23 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         name: "theme-color",
-        content: "#f9f6ef",
+        content: "#f6f7fb",
       },
     ],
     links: [
+      {
+        rel: "preconnect",
+        href: "https://fonts.googleapis.com",
+      },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "",
+      },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap",
+      },
       {
         rel: "icon",
         href: "/favicon.ico",
@@ -52,10 +65,10 @@ function RootComponent() {
         >
           Skip to content
         </a>
-        <div className="min-h-svh bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.88),transparent_34%),linear-gradient(180deg,var(--color-background)_0%,color-mix(in_oklab,var(--color-background)_90%,white)_100%)] text-foreground">
+        <div className="min-h-svh bg-[radial-gradient(circle_at_top,var(--color-shell-glow),transparent_28%),linear-gradient(180deg,var(--color-shell-spotlight)_0%,var(--color-shell-background)_18%,var(--color-card)_100%)] text-foreground">
           <div className="mx-auto grid min-h-svh w-full max-w-6xl grid-rows-[auto_1fr] px-4 sm:px-6 lg:px-8">
             <Header />
-            <main id="main-content" className="pb-8 pt-4 sm:pb-10 sm:pt-6">
+            <main id="main-content" tabIndex={-1} className="pb-8 pt-4 sm:pb-10 sm:pt-6">
               <Outlet />
             </main>
           </div>
