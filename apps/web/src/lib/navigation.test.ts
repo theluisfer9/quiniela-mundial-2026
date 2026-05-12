@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 
-import { AUTH_ENTRY_PATH, PRIMARY_NAV_ITEMS, getHeaderAccountState } from "./navigation";
+import {
+  AUTH_ENTRY_PATH,
+  PRIMARY_NAV_ITEMS,
+  getHeaderAccountAffordance,
+  getHeaderAccountState,
+} from "./navigation";
 
 describe("navigation", () => {
   it("defines the main family-friendly destinations in order", () => {
@@ -18,5 +23,17 @@ describe("navigation", () => {
     expect(getHeaderAccountState(undefined)).toBe("loading");
     expect(getHeaderAccountState(null)).toBe("signedOut");
     expect(getHeaderAccountState({ name: "Ana" })).toBe("signedIn");
+  });
+
+  it("keeps account entry explicit while auth is loading or signed out", () => {
+    expect(getHeaderAccountAffordance("loading")).toEqual({
+      eyebrow: "Cuenta",
+      label: "Cargando acceso",
+    });
+
+    expect(getHeaderAccountAffordance("signedOut")).toEqual({
+      eyebrow: "Tu cuenta",
+      label: "Entrar o crear cuenta",
+    });
   });
 });
