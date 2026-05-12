@@ -1,5 +1,5 @@
 export function getPrivacyRevealCopy({ isLocked }: { isLocked: boolean }) {
   return isLocked
-    ? "Este partido ya empezo. Desde aqui ya no puedes editar tu pronostico y esta pantalla no muestra picks de otras personas."
-    : "Tus picks en esta pantalla siguen privados hasta que empiece el partido; la revelacion general ocurre desde ese momento.";
+    ? "Este partido ya empezo. Tu pick queda cerrado y esta vista sigue mostrando solo tus pronosticos."
+    : "En /pronosticos esta vista muestra solo tus picks. Se mantienen privados hasta que empiece cada partido.";
 }
