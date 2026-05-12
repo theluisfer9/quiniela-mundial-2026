@@ -3,6 +3,11 @@ import type { HomeStandingsRow } from "./home-data";
 export type StandingsRowUi = {
   isCurrentUser: boolean;
   currentUserLabel: string | null;
+  topRank: {
+    isTopThree: boolean;
+    tier: 1 | 2 | 3 | null;
+    label: string | null;
+  };
   movement: {
     direction: "up" | "steady" | "down";
     icon: "↑" | "•" | "↓";
@@ -12,6 +17,31 @@ export type StandingsRowUi = {
 };
 
 export function getStandingsRowUi(row: HomeStandingsRow): StandingsRowUi {
+  const topRank =
+    row.rank === 1
+      ? {
+          isTopThree: true,
+          tier: 1 as const,
+          label: "1er lugar",
+        }
+      : row.rank === 2
+        ? {
+            isTopThree: true,
+            tier: 2 as const,
+            label: "2do lugar",
+          }
+        : row.rank === 3
+          ? {
+              isTopThree: true,
+              tier: 3 as const,
+              label: "3er lugar",
+            }
+          : {
+              isTopThree: false,
+              tier: null,
+              label: null,
+            };
+
   const movement =
     row.rankDelta > 0
       ? {
@@ -37,6 +67,7 @@ export function getStandingsRowUi(row: HomeStandingsRow): StandingsRowUi {
   return {
     isCurrentUser: row.isCurrentUser,
     currentUserLabel: row.isCurrentUser ? "Tu posicion" : null,
+    topRank,
     movement,
   };
 }
