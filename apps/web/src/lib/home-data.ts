@@ -24,7 +24,6 @@ export type HomeMatchSummary = {
 
 export type HomeMatchesData = {
   upcomingMatches: HomeMatchSummary[];
-  pendingCount: number;
   nextKickoff: {
     kickoffAt: number;
     matchCount: number;
@@ -66,27 +65,37 @@ function getCurrentUserName(currentUser: HomeCurrentUser) {
   return name ? name : FALLBACK_NAME;
 }
 
+function getProgressCounts(upcomingMatches: HomeMatchSummary[]) {
+  const predictedCount = upcomingMatches.filter((match) => match.hasPrediction).length;
+
+  return {
+    predictedCount,
+    pendingCount: upcomingMatches.length - predictedCount,
+  };
+}
+
 export function deriveHomeViewModel({ currentUser, standings, matches }: DeriveHomeViewModelInput): HomeViewModel {
   const currentUserStanding = standings.find((row) => row.isCurrentUser) ?? null;
   const hasTournamentData = standings.length > 0 || matches.upcomingMatches.length > 0 || matches.nextKickoff !== null;
+  const progressCounts = getProgressCounts(matches.upcomingMatches);
 
   let state: HomeViewModel["state"] = "upToDate";
   if (!hasTournamentData) {
     state = "empty";
-  } else if (matches.pendingCount > 0) {
+  } else if (progressCounts.pendingCount > 0) {
     state = "pending";
   }
 
   return {
     state,
-    ctaTone: matches.pendingCount > 0 ? "urgent" : "calm",
+    ctaTone: progressCounts.pendingCount > 0 ? "urgent" : "calm",
     currentUserName: getCurrentUserName(currentUser),
     currentUserStanding,
     standings,
     upcomingMatches: matches.upcomingMatches,
     nextKickoff: matches.nextKickoff,
-    pendingCount: matches.pendingCount,
-    predictedCount: matches.upcomingMatches.filter((match) => match.hasPrediction).length,
+    pendingCount: progressCounts.pendingCount,
+    predictedCount: progressCounts.predictedCount,
   };
 }
 

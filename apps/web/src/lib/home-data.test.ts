@@ -15,7 +15,6 @@ describe("deriveHomeViewModel", () => {
         standings: [],
         matches: {
           upcomingMatches: [],
-          pendingCount: 0,
           nextKickoff: null,
         },
       }),
@@ -47,7 +46,6 @@ describe("deriveHomeViewModel", () => {
               hasPrediction: false,
             },
           ],
-          pendingCount: 1,
           nextKickoff: {
             kickoffAt: Date.UTC(2026, 5, 15, 18),
             matchCount: 1,
@@ -83,7 +81,6 @@ describe("deriveHomeViewModel", () => {
               hasPrediction: true,
             },
           ],
-          pendingCount: 0,
           nextKickoff: {
             kickoffAt: Date.UTC(2026, 5, 18, 21),
             matchCount: 1,
@@ -97,6 +94,104 @@ describe("deriveHomeViewModel", () => {
       predictedCount: 1,
       ctaTone: "calm",
     });
+  });
+
+  it("falls back to a generic participant name when the current user name is blank", () => {
+    expect(
+      deriveHomeViewModel({
+        currentUser: {
+          name: "   ",
+          email: "sin-nombre@example.com",
+        },
+        standings: [],
+        matches: {
+          upcomingMatches: [],
+          nextKickoff: null,
+        },
+      }),
+    ).toMatchObject({
+      currentUserName: "participante",
+      state: "empty",
+    });
+  });
+
+  it("derives progress counts from the same upcoming matches source", () => {
+    expect(
+      deriveHomeViewModel({
+        currentUser: CURRENT_USER,
+        standings: [],
+        matches: {
+          upcomingMatches: [
+            {
+              matchId: "match-1",
+              kickoffAt: Date.UTC(2026, 5, 15, 18),
+              stageLabel: "Grupo A",
+              homeTeam: { id: "arg", code: "ARG", name: "Argentina", flagEmoji: "🇦🇷" },
+              awayTeam: { id: "mex", code: "MEX", name: "Mexico", flagEmoji: "🇲🇽" },
+              hasPrediction: true,
+            },
+            {
+              matchId: "match-2",
+              kickoffAt: Date.UTC(2026, 5, 16, 18),
+              stageLabel: "Grupo A",
+              homeTeam: { id: "fra", code: "FRA", name: "Francia", flagEmoji: "🇫🇷" },
+              awayTeam: { id: "usa", code: "USA", name: "Estados Unidos", flagEmoji: "🇺🇸" },
+              hasPrediction: false,
+            },
+          ],
+          nextKickoff: {
+            kickoffAt: Date.UTC(2026, 5, 15, 18),
+            matchCount: 2,
+          },
+        },
+      }),
+    ).toMatchObject({
+      state: "pending",
+      pendingCount: 1,
+      predictedCount: 1,
+      ctaTone: "urgent",
+    });
+  });
+
+  it("keeps progress counts internally consistent", () => {
+    const home = deriveHomeViewModel({
+      currentUser: CURRENT_USER,
+      standings: [],
+      matches: {
+        upcomingMatches: [
+          {
+            matchId: "match-1",
+            kickoffAt: Date.UTC(2026, 5, 15, 18),
+            stageLabel: "Grupo A",
+            homeTeam: { id: "arg", code: "ARG", name: "Argentina", flagEmoji: "🇦🇷" },
+            awayTeam: { id: "mex", code: "MEX", name: "Mexico", flagEmoji: "🇲🇽" },
+            hasPrediction: true,
+          },
+          {
+            matchId: "match-2",
+            kickoffAt: Date.UTC(2026, 5, 16, 18),
+            stageLabel: "Grupo A",
+            homeTeam: { id: "fra", code: "FRA", name: "Francia", flagEmoji: "🇫🇷" },
+            awayTeam: { id: "usa", code: "USA", name: "Estados Unidos", flagEmoji: "🇺🇸" },
+            hasPrediction: false,
+          },
+          {
+            matchId: "match-3",
+            kickoffAt: Date.UTC(2026, 5, 17, 18),
+            stageLabel: "Grupo B",
+            homeTeam: { id: "ger", code: "GER", name: "Alemania", flagEmoji: "🇩🇪" },
+            awayTeam: { id: "jpn", code: "JPN", name: "Japon", flagEmoji: "🇯🇵" },
+            hasPrediction: true,
+          },
+        ],
+        nextKickoff: {
+          kickoffAt: Date.UTC(2026, 5, 15, 18),
+          matchCount: 1,
+        },
+      },
+    });
+
+    expect(home.pendingCount + home.predictedCount).toBe(home.upcomingMatches.length);
   });
 });
 
