@@ -49,6 +49,13 @@ React web apps in this stack share shadcn/ui primitives through `packages/ui`.
 - Update shared primitives in `packages/ui/src/components/*`
 - Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
 
+### DESIGN.md references
+
+The repo includes `awesome-design-md/` as a git submodule with reference `DESIGN.md` files you can use for UI direction.
+
+- Browse available design systems in `awesome-design-md/design-md/*`
+- Copy the `DESIGN.md` you want to use into the project root when you want the agent to follow that visual language
+
 ### Add more shared components
 
 Run this from the project root to add more primitives to the shared UI package:
