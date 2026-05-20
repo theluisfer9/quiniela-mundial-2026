@@ -5,6 +5,7 @@ import {
   PRIMARY_NAV_ITEMS,
   getHeaderAccountAffordance,
   getHeaderAccountState,
+  shouldShowPrimaryNav,
 } from "./navigation";
 
 describe("navigation", () => {
@@ -21,6 +22,7 @@ describe("navigation", () => {
 
   it("treats auth loading separately from a signed-out visitor", () => {
     expect(getHeaderAccountState(undefined)).toBe("loading");
+    expect(getHeaderAccountState(undefined, { loadingTimedOut: true })).toBe("signedOut");
     expect(getHeaderAccountState(null)).toBe("signedOut");
     expect(getHeaderAccountState({ name: "Ana" })).toBe("signedIn");
   });
@@ -28,12 +30,18 @@ describe("navigation", () => {
   it("keeps account entry explicit while auth is loading or signed out", () => {
     expect(getHeaderAccountAffordance("loading")).toEqual({
       eyebrow: "Cuenta",
-      label: "Cargando acceso",
+      label: "Revisando sesión",
     });
 
     expect(getHeaderAccountAffordance("signedOut")).toEqual({
       eyebrow: "Tu cuenta",
-      label: "Entrar o crear cuenta",
+      label: "Entrar",
     });
+  });
+
+  it("only shows primary navigation for signed-in users", () => {
+    expect(shouldShowPrimaryNav("loading")).toBe(false);
+    expect(shouldShowPrimaryNav("signedOut")).toBe(false);
+    expect(shouldShowPrimaryNav("signedIn")).toBe(true);
   });
 });

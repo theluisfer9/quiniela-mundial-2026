@@ -16,17 +16,20 @@ export type HeaderAccountAffordance = {
 const HEADER_ACCOUNT_AFFORDANCES: Record<Exclude<HeaderAccountState, "signedIn">, HeaderAccountAffordance> = {
   loading: {
     eyebrow: "Cuenta",
-    label: "Cargando acceso",
+    label: "Revisando sesión",
   },
   signedOut: {
     eyebrow: "Tu cuenta",
-    label: "Entrar o crear cuenta",
+    label: "Entrar",
   },
 };
 
-export function getHeaderAccountState(currentUser: unknown): HeaderAccountState {
+export function getHeaderAccountState(
+  currentUser: unknown,
+  options: { loadingTimedOut?: boolean } = {},
+): HeaderAccountState {
   if (currentUser === undefined) {
-    return "loading";
+    return options.loadingTimedOut ? "signedOut" : "loading";
   }
 
   return currentUser === null ? "signedOut" : "signedIn";
@@ -36,4 +39,8 @@ export function getHeaderAccountAffordance(
   accountState: Exclude<HeaderAccountState, "signedIn">,
 ): HeaderAccountAffordance {
   return HEADER_ACCOUNT_AFFORDANCES[accountState];
+}
+
+export function shouldShowPrimaryNav(accountState: HeaderAccountState) {
+  return accountState === "signedIn";
 }

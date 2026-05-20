@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 
 import { EmptyTournament } from "@/components/home/empty-tournament";
 import { HomeHero } from "@/components/home/home-hero";
+import { PublicLanding } from "@/components/home/public-landing";
 import { StandingsCard } from "@/components/home/standings-card";
 import { UpcomingMatches } from "@/components/home/upcoming-matches";
 import { buildPredictionEntry, deriveHomeViewModel } from "@/lib/home-data";
@@ -19,22 +20,8 @@ function HomeComponent() {
   const homeMatches = useQuery(api.matches.listHomeMatches, currentUser ? {} : "skip");
   const standings = useQuery(api.standings.getHomeStandings, currentUser ? {} : "skip");
 
-  if (currentUser === undefined) {
-    return <HomeLoadingSkeleton />;
-  }
-
-  if (currentUser === null) {
-    return (
-      <AppSection
-        eyebrow="Quiniela familiar"
-        title="Entra para ver la tabla y tus pronosticos"
-        description="Inicia sesion para seguir como va la familia, revisar los cierres y encontrar rapido donde empezar a pronosticar."
-      >
-        <div className="flex flex-wrap gap-3">
-          <Button render={<a href="/dashboard" />}>Entrar o crear cuenta</Button>
-        </div>
-      </AppSection>
-      );
+  if (currentUser === undefined || currentUser === null) {
+    return <PublicLanding />;
   }
 
   if (homeMatches === undefined || standings === undefined) {

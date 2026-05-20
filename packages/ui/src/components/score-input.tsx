@@ -22,7 +22,7 @@ function ScoreInput({
 
   return (
     <label className="flex min-w-0 flex-col items-center gap-3 text-center" htmlFor={id}>
-      <span className="text-[0.68rem] font-semibold tracking-[0.24em] text-muted-foreground uppercase">{label}</span>
+      <span className="text-[0.68rem] font-bold tracking-[0.24em] text-muted-foreground uppercase">{label}</span>
       <Input
         id={id}
         aria-describedby={describedBy}
@@ -31,7 +31,7 @@ function ScoreInput({
         min={0}
         step={1}
         className={cn(
-          "h-20 rounded-[1.75rem] border-border/80 bg-background/95 px-0 text-center text-4xl font-black tracking-[-0.04em] text-foreground shadow-[inset_0_1px_0_color-mix(in_oklab,var(--color-background)_75%,white),0_18px_40px_-28px_color-mix(in_oklab,var(--color-foreground)_16%,transparent)] [appearance:textfield] placeholder:text-muted-foreground/45 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-ring/70 disabled:bg-muted/70 sm:h-24 sm:text-5xl [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+          "h-20 rounded-[1rem] border-border/80 bg-white px-0 text-center font-display text-5xl font-extrabold tracking-[-0.05em] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_14px_34px_-28px_rgba(42,57,141,0.38)] [appearance:textfield] placeholder:text-muted-foreground/45 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-ring/30 disabled:bg-muted/70 sm:h-24 sm:text-6xl [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
           className,
         )}
         {...props}

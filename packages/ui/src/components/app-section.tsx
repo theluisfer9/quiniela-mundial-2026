@@ -23,7 +23,7 @@ function AppSection({
     <section
       data-slot="app-section"
       className={cn(
-        "rounded-4xl border border-border/80 bg-card/95 px-4 py-5 shadow-[0_16px_50px_-28px_color-mix(in_oklab,var(--color-foreground)_18%,transparent)] sm:px-6 sm:py-6",
+        "rounded-[1.5rem] border border-border/70 bg-card/95 px-4 py-5 shadow-[0_16px_42px_-28px_rgba(42,57,141,0.32)] sm:px-6 sm:py-6",
         className,
       )}
       {...props}
@@ -32,12 +32,12 @@ function AppSection({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             {eyebrow ? (
-              <p className="text-[0.7rem] font-semibold tracking-[0.24em] text-primary uppercase">
+              <p className="text-[0.7rem] font-bold tracking-[0.2em] text-primary uppercase">
                 {eyebrow}
               </p>
             ) : null}
             <div className="space-y-1.5">
-              <h2 className="text-balance text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              <h2 className="text-balance font-display text-2xl font-bold leading-tight tracking-[-0.02em] text-foreground sm:text-3xl">
                 {title}
               </h2>
               {description ? (

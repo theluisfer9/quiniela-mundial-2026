@@ -23,7 +23,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         name: "theme-color",
-        content: "#f6f7fb",
+        content: "#fff8f7",
       },
     ],
     links: [
@@ -38,7 +38,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Anybody:wght@500;600;700;800&family=Lexend:wght@400;500;600;700&display=swap",
       },
       {
         rel: "icon",
@@ -65,10 +65,10 @@ function RootComponent() {
         >
           Skip to content
         </a>
-        <div className="min-h-svh bg-[radial-gradient(circle_at_top,var(--color-shell-glow),transparent_28%),linear-gradient(180deg,var(--color-shell-spotlight)_0%,var(--color-shell-background)_18%,var(--color-card)_100%)] text-foreground">
+        <div className="min-h-svh bg-[radial-gradient(circle_at_18%_0%,rgba(230,29,37,0.12),transparent_26%),radial-gradient(circle_at_92%_18%,rgba(42,57,141,0.12),transparent_24%),linear-gradient(180deg,#fff8f7_0%,#fff0ef_42%,#ffffff_100%)] text-foreground">
           <div className="mx-auto grid min-h-svh w-full max-w-6xl grid-rows-[auto_1fr] px-4 sm:px-6 lg:px-8">
             <Header />
-            <main id="main-content" tabIndex={-1} className="pb-8 pt-4 sm:pb-10 sm:pt-6">
+            <main id="main-content" tabIndex={-1} className="pb-24 pt-8 sm:pb-10 sm:pt-6">
               <Outlet />
             </main>
           </div>

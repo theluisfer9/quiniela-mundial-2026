@@ -89,14 +89,14 @@ export function PredictionCard({ match, status, savedScore, isLocked, isSaving, 
   }
 
   return (
-    <Card className="overflow-hidden rounded-[2rem] border border-border/80 bg-card/95 py-0 ring-0">
-      <CardHeader className="gap-4 px-5 pt-5 pb-0 sm:px-6 sm:pt-6">
+    <Card className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/95 py-0 shadow-[0_18px_44px_-32px_rgba(42,57,141,0.38)] ring-0">
+      <CardHeader className="gap-4 bg-[#2A398D] px-5 pt-5 pb-5 text-white sm:px-6 sm:pt-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
-            <p className="text-[0.7rem] font-semibold tracking-[0.24em] text-primary uppercase">{match.stageLabel}</p>
+            <p className="text-[0.7rem] font-bold tracking-[0.24em] text-white/75 uppercase">{match.stageLabel}</p>
             <div className="space-y-1">
-              <h3 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Tu marcador del partido</h3>
-              <p className="text-sm leading-6 text-muted-foreground">Cierre: {kickoffFormatter.format(match.kickoffAt)}</p>
+              <h3 className="font-display text-3xl font-extrabold leading-none tracking-[-0.04em] text-white sm:text-4xl">Carga tu marcador</h3>
+              <p className="text-sm leading-6 text-white/78">Cierre: {kickoffFormatter.format(match.kickoffAt)}</p>
             </div>
           </div>
           <div className={stateTheme.badgeClassName}>
@@ -105,10 +105,10 @@ export function PredictionCard({ match, status, savedScore, isLocked, isSaving, 
           </div>
         </div>
 
-        <div className="rounded-[1.8rem] border border-border/70 bg-muted/[0.38] p-4 sm:p-5">
+        <div className="rounded-[1.25rem] border border-white/12 bg-white/10 p-4 sm:p-5">
           <div className="grid items-center gap-3 sm:grid-cols-[1fr_auto_1fr]">
             <TeamBlock side="local" team={match.homeTeam} />
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-background text-sm font-semibold tracking-[0.28em] text-muted-foreground uppercase">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/18 bg-white text-sm font-bold tracking-[0.28em] text-[#2A398D] uppercase">
               vs
             </div>
             <TeamBlock side="visita" team={match.awayTeam} align="end" />
@@ -118,7 +118,7 @@ export function PredictionCard({ match, status, savedScore, isLocked, isSaving, 
 
       <CardContent className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[1.8rem] border border-border/70 bg-background/80 p-4 shadow-[0_18px_40px_-32px_color-mix(in_oklab,var(--color-foreground)_20%,transparent)]">
+          <div className="rounded-[1.25rem] border border-border/70 bg-background/80 p-4 shadow-[0_18px_40px_-32px_rgba(42,57,141,0.28)]">
             <ScoreInput
               aria-label={`Goles de ${match.homeTeam.name}`}
               disabled={isReadOnly}
@@ -131,7 +131,7 @@ export function PredictionCard({ match, status, savedScore, isLocked, isSaving, 
             />
           </div>
 
-          <div className="rounded-[1.8rem] border border-border/70 bg-background/80 p-4 shadow-[0_18px_40px_-32px_color-mix(in_oklab,var(--color-foreground)_20%,transparent)]">
+          <div className="rounded-[1.25rem] border border-border/70 bg-background/80 p-4 shadow-[0_18px_40px_-32px_rgba(42,57,141,0.28)]">
             <ScoreInput
               aria-label={`Goles de ${match.awayTeam.name}`}
               disabled={isReadOnly}
@@ -153,19 +153,19 @@ export function PredictionCard({ match, status, savedScore, isLocked, isSaving, 
             {isLocked
               ? getPrivacyRevealCopy({ isLocked: true })
               : isSaving
-                ? "Estamos guardando este marcador. Espera un momento antes de volver a editar."
+                ? "Guardando marcador. Espera un momento antes de editar."
                 : getPrivacyRevealCopy({ isLocked: false })}
           </p>
         </div>
       </CardContent>
 
-      <CardFooter className="border-border/70 px-5 py-4 sm:px-6">
+      <CardFooter className="border-border/70 bg-muted/25 px-5 py-4 sm:px-6">
         <p className="text-xs leading-5 text-muted-foreground">
           {isLocked
-            ? "Cuando arranca el partido, el pronostico pasa a modo lectura. No es un error: simplemente ya no se puede editar desde aqui."
+            ? "Cuando arranca el partido, el pronóstico queda bloqueado y pasa a modo lectura."
             : isSaving
-              ? "Guardado en curso: bloqueamos la pieza un momento para evitar cambios cruzados mientras llega la respuesta."
-              : "Tus picks siguen privados hasta que empiece este partido. Esta pantalla muestra solo tus pronosticos."}
+              ? "Guardado en curso. Bloqueamos la edición para evitar cambios duplicados."
+              : "Tus pronósticos son privados hasta que empiece el partido."}
         </p>
       </CardFooter>
     </Card>
@@ -182,14 +182,14 @@ function TeamBlock({
   align?: "start" | "end";
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-[1.5rem] bg-background/80 px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_oklab,var(--color-background)_72%,white)]">
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted/45 text-3xl leading-none">
+    <div className="flex items-center gap-4 rounded-[1rem] bg-white/12 px-4 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <div className="flex size-14 shrink-0 items-center justify-center rounded-full border border-white/24 bg-white text-3xl leading-none">
         {team.flagEmoji ?? "-"}
       </div>
       <div className={align === "end" ? "min-w-0 text-left sm:text-right" : "min-w-0 text-left"}>
-        <p className="text-[0.7rem] font-semibold tracking-[0.2em] text-muted-foreground uppercase">{side}</p>
-        <p className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{team.name}</p>
-        <p className="mt-1 text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">{team.code}</p>
+        <p className="text-[0.7rem] font-semibold tracking-[0.2em] text-white/68 uppercase">{side}</p>
+        <p className="mt-1 font-display text-xl font-bold tracking-[-0.03em] text-white sm:text-2xl">{team.name}</p>
+        <p className="mt-1 text-xs font-semibold tracking-[0.2em] text-white/68 uppercase">{team.code}</p>
       </div>
     </div>
   );

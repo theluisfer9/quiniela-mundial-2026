@@ -75,8 +75,8 @@ function PredictionsRoute() {
     return (
       <AppSection
         eyebrow="Pronosticos"
-        title="Entra para cargar tus resultados"
-        description="Inicia sesion para avanzar partido por partido, guardar tus marcadores y ver tus cierres a tiempo."
+        title="Entra para cargar marcadores"
+        description="Inicia sesión para guardar pronósticos y revisar fechas límite."
       >
         <div className="flex flex-wrap gap-3">
           <Button render={<a href="/dashboard" />}>Entrar o crear cuenta</Button>
@@ -96,11 +96,11 @@ function PredictionsRoute() {
     return (
       <AppSection
         eyebrow="Pronosticos"
-        title="No hay partidos abiertos para pronosticar"
-        description="Cuando publiquemos el siguiente bloque de partidos, aqui vas a retomarlos uno por uno."
+        title="No hay partidos abiertos"
+        description="Cuando publiquemos el siguiente bloque, podrás cargar marcadores desde aquí."
       >
         <div className="space-y-3 text-sm leading-6 text-muted-foreground">
-          <p>Tus picks se cargan partido por partido y esta pantalla muestra solo tus pronosticos mientras cada juego sigue abierto.</p>
+          <p>Esta pantalla muestra tus pronósticos mientras cada partido sigue abierto.</p>
           <div className="flex flex-wrap gap-3">
             <Button render={<a href="/" />}>Volver al inicio</Button>
             <Button render={<a href="/dashboard" />} variant="outline">
@@ -195,8 +195,8 @@ function PredictionsRoute() {
   return (
     <AppSection
       eyebrow="Pronosticos"
-      title="Carga tus marcadores partido por partido"
-      description="Un juego a la vez, con guardado automatico cuando completas el marcador de ese partido."
+      title="Carga tus marcadores"
+      description="Avanza partido por partido. Guardamos cada marcador cuando está completo."
       action={<Button render={<a href="/" />} variant="outline">Volver al inicio</Button>}
     >
       <div className="space-y-4">
@@ -237,8 +237,8 @@ function PredictionsLoadingState() {
   return (
     <AppSection
       eyebrow="Pronosticos"
-      title="Preparando tus partidos"
-      description="Estamos cargando tus proximos cierres y los marcadores que ya habias guardado."
+      title="Cargando partidos"
+      description="Estamos preparando tus próximos cierres y marcadores guardados."
     >
       <div className="space-y-4">
         <Skeleton className="h-28 rounded-[2rem]" />
