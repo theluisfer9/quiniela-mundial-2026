@@ -18,6 +18,7 @@ import type * as lib_scoring from "../lib/scoring.js";
 import type * as lib_visibility from "../lib/visibility.js";
 import type * as lib_worldCup2026GroupStage from "../lib/worldCup2026GroupStage.js";
 import type * as matches from "../matches.js";
+import type * as players from "../players.js";
 import type * as predictions from "../predictions.js";
 import type * as privateData from "../privateData.js";
 import type * as profiles from "../profiles.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "lib/visibility": typeof lib_visibility;
   "lib/worldCup2026GroupStage": typeof lib_worldCup2026GroupStage;
   matches: typeof matches;
+  players: typeof players;
   predictions: typeof predictions;
   privateData: typeof privateData;
   profiles: typeof profiles;

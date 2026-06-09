@@ -1,3 +1,4 @@
+import { api } from "@quiniela-mundial-2026/backend/convex/_generated/api";
 import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import {
   DropdownMenu,
@@ -9,22 +10,49 @@ import {
   DropdownMenuTrigger,
 } from "@quiniela-mundial-2026/ui/components/dropdown-menu";
 import { useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { ChevronDown, LogOut } from "lucide-react";
+import { useState } from "react";
 
-import { authClient } from "@/lib/auth-client";
 import { AUTH_ENTRY_PATH } from "@/lib/navigation";
+import { clearPlayerSession, type StoredPlayerSession } from "@/lib/player-session";
 
 type UserMenuProps = {
-  user: {
-    name?: string | null;
-    email?: string | null;
-  };
+  playerSession: StoredPlayerSession;
+  onPlayerSessionCleared: () => void;
 };
 
-export default function UserMenu({ user }: UserMenuProps) {
+export default function UserMenu({ playerSession, onPlayerSessionCleared }: UserMenuProps) {
   const navigate = useNavigate();
-  const firstName = user?.name?.trim().split(/\s+/)[0] ?? "Cuenta";
+  const logoutPlayer = useMutation(api.players.logout);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const firstName = playerSession.displayName.trim().split(/\s+/)[0] || "Jugador";
   const firstInitial = firstName.charAt(0).toUpperCase();
+
+  async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      if (playerSession.sessionToken) {
+        await logoutPlayer({ sessionToken: playerSession.sessionToken });
+      }
+    } catch (error) {
+      console.warn("No pudimos cerrar la sesión remota del jugador.", error);
+    } finally {
+      clearPlayerSession();
+      onPlayerSessionCleared();
+      try {
+        await navigate({ to: AUTH_ENTRY_PATH });
+      } catch (error) {
+        console.warn("No pudimos navegar al inicio después de cambiar jugador.", error);
+        setIsLoggingOut(false);
+      }
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -32,17 +60,18 @@ export default function UserMenu({ user }: UserMenuProps) {
         render={
           <Button
             variant="outline"
-            className="h-auto rounded-[1.35rem] border-border/70 bg-white px-3 py-2 shadow-[0_12px_24px_-20px_rgba(31,36,80,0.4)]"
+            disabled={isLoggingOut}
+            className="h-auto w-full justify-between rounded-[1.35rem] border-border/70 bg-white px-3 py-2 shadow-[0_12px_24px_-20px_rgba(31,36,80,0.4)] sm:w-auto"
           />
         }
       >
-        <span className="flex items-center gap-3 text-left">
+        <span className="flex w-full items-center gap-3 text-left sm:w-auto">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-[1rem] bg-primary/10 text-sm font-bold text-primary">
             {firstInitial}
           </span>
           <span className="min-w-0">
             <span className="block text-[0.65rem] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
-              Mi cuenta
+              Mi jugador
             </span>
             <span className="block max-w-28 truncate text-sm font-semibold text-foreground">Hola, {firstName}</span>
           </span>
@@ -52,28 +81,19 @@ export default function UserMenu({ user }: UserMenuProps) {
       <DropdownMenuContent align="end" className="min-w-64 rounded-[1.5rem] border-border/70 bg-card p-1">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="rounded-[1rem] bg-secondary/45 px-3 py-3">
-            <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-primary uppercase">Tu cuenta</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{user.name}</p>
-            <p className="text-xs text-muted-foreground">{user.email}</p>
+            <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-primary uppercase">Jugador guardado</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{playerSession.displayName}</p>
+            <p className="text-xs text-muted-foreground">Se validara al abrir Pronósticos.</p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
+            disabled={isLoggingOut}
             className="rounded-[1rem]"
-            onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    navigate({
-                      to: AUTH_ENTRY_PATH,
-                    });
-                  },
-                },
-              });
-            }}
+            onClick={() => void handleLogout()}
           >
             <LogOut className="size-4" />
-            Cerrar sesión
+            {isLoggingOut ? "Cambiando..." : "Cambiar jugador"}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

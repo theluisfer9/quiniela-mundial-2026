@@ -63,23 +63,23 @@ describe("buildStandingsRows", () => {
   it("aggregates finished-match points into ranked home standings rows", () => {
     expect(
       buildStandingsRows({
-        currentUserId: "user-2",
+        currentPlayerId: "player-2",
         profiles: [
-          { userId: "user-1", name: "Ana" },
-          { userId: "user-2", name: "Beto" },
-          { userId: "user-3", name: "Carla" },
+          { playerId: "player-1", name: "Ana" },
+          { playerId: "player-2", name: "Beto" },
+          { playerId: "player-3", name: "Carla" },
         ],
         matches: [
           { id: "match-1", homeScore: 2, awayScore: 1 },
           { id: "match-2", homeScore: 0, awayScore: 1 },
         ],
         predictions: [
-          { userId: "user-1", matchId: "match-1", homeScore: 2, awayScore: 1 },
-          { userId: "user-1", matchId: "match-2", homeScore: 1, awayScore: 1 },
-          { userId: "user-2", matchId: "match-1", homeScore: 3, awayScore: 1 },
-          { userId: "user-2", matchId: "match-2", homeScore: 0, awayScore: 1 },
-          { userId: "user-3", matchId: "match-1", homeScore: 1, awayScore: 0 },
-          { userId: "user-3", matchId: "match-2", homeScore: 2, awayScore: 1 },
+          { playerId: "player-1", matchId: "match-1", homeScore: 2, awayScore: 1 },
+          { playerId: "player-1", matchId: "match-2", homeScore: 1, awayScore: 1 },
+          { playerId: "player-2", matchId: "match-1", homeScore: 3, awayScore: 1 },
+          { playerId: "player-2", matchId: "match-2", homeScore: 0, awayScore: 1 },
+          { playerId: "player-3", matchId: "match-1", homeScore: 1, awayScore: 0 },
+          { playerId: "player-3", matchId: "match-2", homeScore: 2, awayScore: 1 },
         ],
       }),
     ).toEqual([
@@ -110,16 +110,16 @@ describe("buildStandingsRows", () => {
   it("breaks ties deterministically by name", () => {
     expect(
       buildStandingsRows({
-        currentUserId: "user-3",
+        currentPlayerId: "player-3",
         profiles: [
-          { userId: "user-2", name: "Beto" },
-          { userId: "user-1", name: "Ana" },
-          { userId: "user-3", name: "Carla" },
+          { playerId: "player-2", name: "Beto" },
+          { playerId: "player-1", name: "Ana" },
+          { playerId: "player-3", name: "Carla" },
         ],
         matches: [{ id: "match-1", homeScore: 1, awayScore: 0 }],
         predictions: [
-          { userId: "user-1", matchId: "match-1", homeScore: 2, awayScore: 0 },
-          { userId: "user-2", matchId: "match-1", homeScore: 3, awayScore: 1 },
+          { playerId: "player-1", matchId: "match-1", homeScore: 2, awayScore: 0 },
+          { playerId: "player-2", matchId: "match-1", homeScore: 3, awayScore: 1 },
         ],
       }),
     ).toEqual([
@@ -147,13 +147,13 @@ describe("buildStandingsRows", () => {
     ]);
   });
 
-  it("breaks same-name ties deterministically by user id", () => {
+  it("breaks same-name ties deterministically by player id", () => {
     expect(
       buildStandingsRows({
-        currentUserId: "user-2",
+        currentPlayerId: "player-2",
         profiles: [
-          { userId: "user-2", name: "Alex" },
-          { userId: "user-1", name: "Alex" },
+          { playerId: "player-2", name: "Alex" },
+          { playerId: "player-1", name: "Alex" },
         ],
         matches: [],
         predictions: [],
@@ -174,5 +174,22 @@ describe("buildStandingsRows", () => {
         isCurrentUser: true,
       },
     ]);
+  });
+
+  it("marks no current row when current player is null for public standings", () => {
+    expect(
+      buildStandingsRows({
+        currentPlayerId: null,
+        profiles: [
+          { playerId: "player-1", name: "Ana" },
+          { playerId: "player-2", name: "Beto" },
+        ],
+        matches: [{ id: "match-1", homeScore: 2, awayScore: 1 }],
+        predictions: [
+          { playerId: "player-1", matchId: "match-1", homeScore: 2, awayScore: 1 },
+          { playerId: "player-2", matchId: "match-1", homeScore: 1, awayScore: 0 },
+        ],
+      }).map((row) => row.isCurrentUser),
+    ).toEqual([false, false]);
   });
 });

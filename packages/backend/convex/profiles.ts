@@ -1,51 +1,23 @@
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 
-import { mutation } from "./_generated/server";
-import { getCurrentUserOrNull } from "./lib/currentUser";
-import { getDefaultDisplayName } from "./lib/profiles";
+import { query } from "./_generated/server";
 
-const ensureCurrentProfileResult = v.object({
-  profileId: v.id("profiles"),
-  displayName: v.string(),
-  created: v.boolean(),
-});
-
-export const ensureCurrentProfile = mutation({
+export const listActivePlayers = query({
   args: {},
-  returns: ensureCurrentProfileResult,
+  returns: v.array(
+    v.object({
+      playerId: v.id("profiles"),
+      displayName: v.string(),
+    }),
+  ),
   handler: async (ctx) => {
-    const authUser = await getCurrentUserOrNull(ctx);
-    if (!authUser) {
-      throw new ConvexError("Not authenticated");
-    }
-    const userId = authUser.userId;
-    if (!userId) {
-      throw new ConvexError("Not authenticated");
-    }
-
-    const existingProfile = await ctx.db
+    const players = await ctx.db
       .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .unique();
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .collect();
 
-    if (existingProfile) {
-      return {
-        profileId: existingProfile._id,
-        displayName: existingProfile.displayName,
-        created: false,
-      };
-    }
-
-    const displayName = getDefaultDisplayName(authUser);
-    const profileId = await ctx.db.insert("profiles", {
-      userId,
-      displayName,
-    });
-
-    return {
-      profileId,
-      displayName,
-      created: true,
-    };
+    return players.flatMap((player) =>
+      player.pinHash ? [{ playerId: player._id, displayName: player.displayName }] : [],
+    );
   },
 });

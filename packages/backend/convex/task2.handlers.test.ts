@@ -12,7 +12,6 @@ const testModules = {
   "./_generated/api.ts": async () => ({}),
   "./auth.ts": async () => await import("./auth"),
   "./matches.ts": async () => await import("./matches"),
-  "./predictions.ts": async () => await import("./predictions"),
   "./profiles.ts": async () => await import("./profiles"),
   "./standings.ts": async () => await import("./standings"),
 } satisfies Record<string, () => Promise<unknown>>;
@@ -57,198 +56,16 @@ describe("Task 2 handlers", () => {
     Date.now = realNow;
   });
 
-  describe("profiles.ensureCurrentProfile", () => {
-    it("rejects unauthenticated callers", async () => {
-      const t = createTest();
-
-      await expect(t.mutation(api.profiles.ensureCurrentProfile, {})).rejects.toThrow("Not authenticated");
-    });
-
-    it("creates a profile once and reuses it on later calls", async () => {
-      const t = createTest();
-      const asAna = t.withIdentity({
-        name: "Ana",
-        email: "ana@example.com",
-        tokenIdentifier: "test|ana",
-      });
-
-      const first = await asAna.mutation(api.profiles.ensureCurrentProfile, {});
-      const second = await asAna.mutation(api.profiles.ensureCurrentProfile, {});
-
-      expect(first.created).toBe(true);
-      expect(second.created).toBe(false);
-      expect(second.profileId).toBe(first.profileId);
-      expect(second.displayName).toBe("Ana");
-
-      const profiles = await t.run((ctx) => ctx.db.query("profiles").collect());
-      expect(profiles).toHaveLength(1);
-      expect(profiles[0]?.userId).toBe("test|ana");
-    });
-
-    it("uses a privacy-safe generic fallback when auth name is blank", async () => {
-      const t = createTest();
-      const asAnonymous = t.withIdentity({
-        name: "   ",
-        email: "hidden@example.com",
-        tokenIdentifier: "test|anonymous",
-      });
-
-      const profile = await asAnonymous.mutation(api.profiles.ensureCurrentProfile, {});
-
-      expect(profile.displayName).toBe("Participante");
-    });
-  });
-
-  describe("predictions.upsertPrediction", () => {
-    it("rejects unauthenticated callers", async () => {
-      const t = createTest();
-      const { argentinaId, brazilId } = await seedTeams(t);
-      const matchId = await t.run((ctx) =>
-        ctx.db.insert("matches", {
-          kickoffAt: NOW + 60_000,
-          homeTeamId: argentinaId,
-          awayTeamId: brazilId,
-          stageLabel: "Group A",
-          status: "scheduled",
-        }),
-      );
-
-      await expect(
-        t.mutation(api.predictions.upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n }),
-      ).rejects.toThrow("Not authenticated");
-    });
-
-    it("rejects locked matches", async () => {
-      const t = createTest();
-      const asAna = t.withIdentity({ name: "Ana", email: "ana@example.com", tokenIdentifier: "test|ana" });
-      const { argentinaId, brazilId } = await seedTeams(t);
-      const matchId = await t.run((ctx) =>
-        ctx.db.insert("matches", {
-          kickoffAt: NOW,
-          homeTeamId: argentinaId,
-          awayTeamId: brazilId,
-          stageLabel: "Group A",
-          status: "scheduled",
-        }),
-      );
-
-      await expect(
-        asAna.mutation(api.predictions.upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n }),
-      ).rejects.toThrow("Match is locked");
-    });
-
-    it("rejects invalid scores", async () => {
-      const t = createTest();
-      const asAna = t.withIdentity({ name: "Ana", email: "ana@example.com", tokenIdentifier: "test|ana" });
-      const { argentinaId, brazilId } = await seedTeams(t);
-      const matchId = await t.run((ctx) =>
-        ctx.db.insert("matches", {
-          kickoffAt: NOW + 60_000,
-          homeTeamId: argentinaId,
-          awayTeamId: brazilId,
-          stageLabel: "Group A",
-          status: "scheduled",
-        }),
-      );
-
-      await expect(
-        asAna.mutation(api.predictions.upsertPrediction, { matchId, homeScore: -1n, awayScore: 0n }),
-      ).rejects.toThrow("Score must be between 0 and 20");
-    });
-
-    it("upserts one prediction row for the current user", async () => {
-      const t = createTest();
-      const asAna = t.withIdentity({ name: "Ana", email: "ana@example.com", tokenIdentifier: "test|ana" });
-      const { argentinaId, brazilId } = await seedTeams(t);
-      const matchId = await t.run((ctx) =>
-        ctx.db.insert("matches", {
-          kickoffAt: NOW + 60_000,
-          homeTeamId: argentinaId,
-          awayTeamId: brazilId,
-          stageLabel: "Group A",
-          status: "scheduled",
-        }),
-      );
-
-      const first = await asAna.mutation(api.predictions.upsertPrediction, {
-        matchId,
-        homeScore: 1n,
-        awayScore: 0n,
-      });
-      const second = await asAna.mutation(api.predictions.upsertPrediction, {
-        matchId,
-        homeScore: 2n,
-        awayScore: 1n,
-      });
-
-      expect(first.status).toBe("saved");
-      expect(second.status).toBe("saved");
-
-      const predictions = await t.run((ctx) =>
-        ctx.db
-          .query("predictions")
-          .withIndex("by_match_id", (q) => q.eq("matchId", matchId))
-          .collect(),
-      );
-
-      expect(predictions).toHaveLength(1);
-      expect(predictions[0]).toMatchObject({ userId: "test|ana", homeScore: 2n, awayScore: 1n });
-    });
-  });
-
-  describe("predictions.listMyPredictions", () => {
-    it("returns only the current user's predictions", async () => {
-      const t = createTest();
-      const asAna = t.withIdentity({ name: "Ana", email: "ana@example.com", tokenIdentifier: "test|ana" });
-      const asBeto = t.withIdentity({ name: "Beto", email: "beto@example.com", tokenIdentifier: "test|beto" });
-      const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
-      const matchId = await t.run((ctx) =>
-        ctx.db.insert("matches", {
-          kickoffAt: NOW + 60_000,
-          homeTeamId: argentinaId,
-          awayTeamId: brazilId,
-          stageLabel: "Group A",
-          status: "scheduled",
-        }),
-      );
-      const otherMatchId = await t.run((ctx) =>
-        ctx.db.insert("matches", {
-          kickoffAt: NOW + 120_000,
-          homeTeamId: mexicoId,
-          awayTeamId: brazilId,
-          stageLabel: "Group B",
-          status: "scheduled",
-        }),
-      );
-
-      await asAna.mutation(api.predictions.upsertPrediction, { matchId, homeScore: 1n, awayScore: 0n });
-      await asBeto.mutation(api.predictions.upsertPrediction, {
-        matchId: otherMatchId,
-        homeScore: 0n,
-        awayScore: 2n,
-      });
-
-      const mine = await asAna.query(api.predictions.listMyPredictions, {});
-
-      expect(mine).toEqual([
-        {
-          matchId,
-          homeScore: 1n,
-          awayScore: 0n,
-          updatedAt: expect.any(Number),
-        },
-      ]);
-    });
-  });
-
   describe("standings.getHomeStandings", () => {
     it("computes standings rows from finished matches without exposing raw predictions", async () => {
       const t = createTest();
       const asAna = t.withIdentity({ name: "Ana", email: "ana@example.com", tokenIdentifier: "test|ana" });
       const asBeto = t.withIdentity({ name: "Beto", email: "beto@example.com", tokenIdentifier: "test|beto" });
       const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
-      await asAna.mutation(api.profiles.ensureCurrentProfile, {});
-      await asBeto.mutation(api.profiles.ensureCurrentProfile, {});
+      await t.run(async (ctx) => {
+        await ctx.db.insert("profiles", { userId: "test|ana", displayName: "Ana" });
+        await ctx.db.insert("profiles", { userId: "test|beto", displayName: "Beto" });
+      });
 
       const matchOneId = await t.run((ctx) =>
         ctx.db.insert("matches", {

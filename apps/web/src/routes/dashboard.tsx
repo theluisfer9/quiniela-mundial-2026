@@ -1,102 +1,77 @@
+import { api } from "@quiniela-mundial-2026/backend/convex/_generated/api";
 import { AppSection } from "@quiniela-mundial-2026/ui/components/app-section";
 import { Button } from "@quiniela-mundial-2026/ui/components/button";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
-import { CheckCircle2, Loader2 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
+import { useState } from "react";
 
-import SignInForm from "@/components/sign-in-form";
-import SignUpForm from "@/components/sign-up-form";
-import { POST_AUTH_REDIRECT_PATH } from "@/lib/navigation";
+import { PinEntryForm } from "@/components/pin-entry-form";
+import { storePlayerSession } from "@/lib/player-session";
 
 export const Route = createFileRoute("/dashboard")({
   component: RouteComponent,
 });
 
-function DashboardShell({
-  children,
-}: {
-  children: ReactNode;
-}) {
+function RouteComponent() {
+  const navigate = useNavigate({ from: Route.fullPath });
+  const loginWithPin = useMutation(api.players.loginWithPin);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isSubmittingPin, setIsSubmittingPin] = useState(false);
+
+  async function handlePinSubmit(pin: string) {
+    setPinError(null);
+    setIsSubmittingPin(true);
+
+    try {
+      const result = await loginWithPin({ pin });
+
+      if (result.status === "ok") {
+        storePlayerSession({
+          sessionToken: result.sessionToken,
+          displayName: result.player.displayName,
+        });
+        await navigate({ to: "/pronosticos", search: { match: undefined } });
+        return;
+      }
+
+      if (result.status === "invalid_pin" || result.status === "locked") {
+        setPinError(result.message);
+      }
+    } catch {
+      setPinError("No pudimos validar tu PIN. Intenta de nuevo.");
+    } finally {
+      setIsSubmittingPin(false);
+    }
+  }
+
   return (
-    <section className="mx-auto grid w-full max-w-[32rem] gap-4">
-      <div className="flex flex-col gap-4">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function AuthenticatedDashboardShell() {
-  const navigate = useNavigate({ from: "/dashboard" });
-
-  useEffect(() => {
-    void navigate({
-      to: POST_AUTH_REDIRECT_PATH,
-      replace: true,
-    });
-  }, [navigate]);
-
-  return (
-    <DashboardShell>
+    <section className="mx-auto grid w-full max-w-[40rem] gap-4">
       <AppSection
-        eyebrow="Acceso correcto"
-        title="Acceso confirmado"
-        description="Puedes ir al inicio o seguir directo a Pronósticos."
+        eyebrow="Acceso actualizado"
+        title="Ahora entras con tu PIN"
+        description="Para cargar marcadores, ingresa el PIN de tu jugador. La tabla publica esta disponible desde Inicio."
         className="border-border/70 bg-white/88"
       >
-        <div className="flex items-center gap-2 rounded-[1.4rem] bg-accent/10 px-4 py-3 text-sm font-semibold text-foreground">
-          <CheckCircle2 className="size-4 text-accent" />
-          Tu sesión ya está activa.
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button render={<Link to={POST_AUTH_REDIRECT_PATH} />}>Ir al inicio</Button>
-          <Button render={<Link to="/pronosticos" search={{ match: undefined }} />} variant="outline">
-            Ir a Pronósticos
-          </Button>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,24rem)_auto] lg:items-start">
+          <PinEntryForm
+            title="Acceso de jugador"
+            description="Ingresa tu PIN para guardar pronosticos. Pronósticos validara tu acceso antes de mostrar tus partidos."
+            headingLevel="h2"
+            isSubmitting={isSubmittingPin}
+            error={pinError}
+            submitLabel="Entrar a pronosticos"
+            onSubmit={handlePinSubmit}
+          />
+          <div className="flex flex-wrap gap-3">
+            <Button render={<a href="/#pin-acceso" />} variant="outline">
+              Ir al acceso con PIN
+            </Button>
+            <Button render={<a href="/pronosticos" />} variant="outline">
+              Abrir Pronósticos
+            </Button>
+          </div>
         </div>
       </AppSection>
-    </DashboardShell>
-  );
-}
-
-function RouteComponent() {
-  const [showSignIn, setShowSignIn] = useState(true);
-
-  const shellTitle = showSignIn ? "Entra a tu quiniela" : "Crea tu cuenta";
-  const shellDescription = showSignIn
-    ? "Consulta la tabla, revisa cierres y carga tus pronósticos del Mundial."
-    : "Guarda tus marcadores, suma puntos y sigue el torneo con tu grupo.";
-
-  return (
-    <>
-      <Authenticated>
-        <AuthenticatedDashboardShell />
-      </Authenticated>
-      <Unauthenticated>
-        <DashboardShell>
-          {showSignIn ? (
-            <SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
-          ) : (
-            <SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
-          )}
-        </DashboardShell>
-      </Unauthenticated>
-      <AuthLoading>
-        <DashboardShell>
-          <AppSection
-            eyebrow="Un momento"
-            title="Revisando tu sesión"
-            description="Queremos mostrarte el estado correcto sin perder de vista tu cuenta."
-            className="border-border/70 bg-white/88"
-          >
-            <div className="flex items-center gap-3 rounded-[1.4rem] bg-secondary/55 px-4 py-4 text-sm font-semibold text-foreground">
-              <Loader2 className="size-4 animate-spin text-sidebar-primary" />
-              Cargando tu acceso...
-            </div>
-          </AppSection>
-        </DashboardShell>
-      </AuthLoading>
-    </>
+    </section>
   );
 }

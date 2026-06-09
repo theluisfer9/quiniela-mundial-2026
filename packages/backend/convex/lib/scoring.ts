@@ -6,7 +6,7 @@ type CalculatePredictionPointsArgs = {
 };
 
 type StandingsProfile = {
-  userId: string;
+  playerId: string;
   name: string;
 };
 
@@ -17,7 +17,7 @@ type StandingsMatch = {
 };
 
 type StandingsPrediction = {
-  userId: string;
+  playerId: string;
   matchId: string;
   homeScore: number;
   awayScore: number;
@@ -32,7 +32,7 @@ export type StandingsRow = {
 };
 
 type BuildStandingsRowsArgs = {
-  currentUserId: string;
+  currentPlayerId?: string | null;
   profiles: StandingsProfile[];
   matches: StandingsMatch[];
   predictions: StandingsPrediction[];
@@ -67,23 +67,23 @@ export function calculatePredictionPoints({
   return 0;
 }
 
-function calculatePointsByUser(
+function calculatePointsByPlayer(
   profiles: StandingsProfile[],
   matches: StandingsMatch[],
   predictions: StandingsPrediction[],
 ) {
   const matchById = new Map(matches.map((match) => [match.id, match]));
-  const pointsByUserId = new Map(profiles.map((profile) => [profile.userId, 0]));
+  const pointsByPlayerId = new Map(profiles.map((profile) => [profile.playerId, 0]));
 
   for (const prediction of predictions) {
     const match = matchById.get(prediction.matchId);
-    if (!match || !pointsByUserId.has(prediction.userId)) {
+    if (!match || !pointsByPlayerId.has(prediction.playerId)) {
       continue;
     }
 
-    pointsByUserId.set(
-      prediction.userId,
-      pointsByUserId.get(prediction.userId)! +
+    pointsByPlayerId.set(
+      prediction.playerId,
+      pointsByPlayerId.get(prediction.playerId)! +
         calculatePredictionPoints({
           predictedHome: prediction.homeScore,
           predictedAway: prediction.awayScore,
@@ -93,15 +93,15 @@ function calculatePointsByUser(
     );
   }
 
-  return pointsByUserId;
+  return pointsByPlayerId;
 }
 
-function rankProfiles(profiles: StandingsProfile[], pointsByUserId: Map<string, number>) {
+function rankProfiles(profiles: StandingsProfile[], pointsByPlayerId: Map<string, number>) {
   return profiles
     .map((profile) => ({
-      userId: profile.userId,
+      playerId: profile.playerId,
       name: profile.name,
-      points: pointsByUserId.get(profile.userId) ?? 0,
+      points: pointsByPlayerId.get(profile.playerId) ?? 0,
     }))
     .sort((left, right) => {
       if (right.points !== left.points) {
@@ -113,35 +113,35 @@ function rankProfiles(profiles: StandingsProfile[], pointsByUserId: Map<string, 
         return byName;
       }
 
-      return left.userId.localeCompare(right.userId);
+      return left.playerId.localeCompare(right.playerId);
     });
 }
 
 export function buildStandingsRows({
-  currentUserId,
+  currentPlayerId = null,
   profiles,
   matches,
   predictions,
 }: BuildStandingsRowsArgs): StandingsRow[] {
   const currentRanked = rankProfiles(
     profiles,
-    calculatePointsByUser(profiles, matches, predictions),
+    calculatePointsByPlayer(profiles, matches, predictions),
   );
   const previousRanked = rankProfiles(
     profiles,
-    calculatePointsByUser(
+    calculatePointsByPlayer(
       profiles,
       matches.slice(0, -1),
       predictions,
     ),
   );
   const previousRanks = new Map(
-    previousRanked.map((profile, index) => [profile.userId, index + 1]),
+    previousRanked.map((profile, index) => [profile.playerId, index + 1]),
   );
 
   return currentRanked.map((profile, index) => {
     const rank = index + 1;
-    const previousRank = previousRanks.get(profile.userId);
+    const previousRank = previousRanks.get(profile.playerId);
     const rankDelta =
       previousRank === undefined || previousRank === rank
         ? 0
@@ -154,7 +154,7 @@ export function buildStandingsRows({
       name: profile.name,
       points: profile.points,
       rankDelta,
-      isCurrentUser: profile.userId === currentUserId,
+      isCurrentUser: currentPlayerId !== null && profile.playerId === currentPlayerId,
     };
   });
 }

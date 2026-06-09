@@ -1,0 +1,26 @@
+export const SEEDED_PROFILE_TIMESTAMP = Date.UTC(2026, 0, 1);
+
+export const seededPlayers = [
+  { displayName: "Boris", pin: "B0R1" },
+  { displayName: "Q", pin: "Q026" },
+  { displayName: "Pucho", pin: "PU26" },
+  { displayName: "Lester", pin: "LE26" },
+  { displayName: "Ale", pin: "AL26" },
+  { displayName: "Otto", pin: "OT26" },
+  { displayName: "Profe", pin: "PR26" },
+  { displayName: "LF", pin: "LF26" },
+  { displayName: "Sofi", pin: "SO26" },
+  { displayName: "Sergio", pin: "SE26" },
+  { displayName: "Chata", pin: "CH26" },
+  { displayName: "Fer", pin: "FE26" },
+  { displayName: "Teto", pin: "TE26" },
+  { displayName: "Marianne", pin: "MA26" },
+  { displayName: "Coco", pin: "CO26" },
+  { displayName: "Estuardo", pin: "ES26" },
+  { displayName: "Lily", pin: "LI26" },
+  { displayName: "Tesoro", pin: "TS26" },
+  { displayName: "Rolando", pin: "RO26" },
+  { displayName: "Rocio", pin: "RC26" },
+  { displayName: "Eve", pin: "EV26" },
+  { displayName: "Rob", pin: "RB26" },
+] as const;

@@ -16,32 +16,29 @@ describe("navigation", () => {
     ]);
   });
 
-  it("keeps dashboard as the auth entry shell", () => {
-    expect(AUTH_ENTRY_PATH).toBe("/dashboard");
+  it("uses the public home screen as the PIN access entry", () => {
+    expect(AUTH_ENTRY_PATH).toBe("/");
   });
 
-  it("treats auth loading separately from a signed-out visitor", () => {
-    expect(getHeaderAccountState(undefined)).toBe("loading");
-    expect(getHeaderAccountState(undefined, { loadingTimedOut: true })).toBe("signedOut");
-    expect(getHeaderAccountState(null)).toBe("signedOut");
-    expect(getHeaderAccountState({ name: "Ana" })).toBe("signedIn");
+  it("derives header player state from the local PIN session only", () => {
+    expect(getHeaderAccountState(null)).toBe("needsPin");
+    expect(getHeaderAccountState({ sessionToken: "token", displayName: "Ana Perez" })).toBe("storedPlayer");
   });
 
-  it("keeps account entry explicit while auth is loading or signed out", () => {
-    expect(getHeaderAccountAffordance("loading")).toEqual({
-      eyebrow: "Cuenta",
-      label: "Revisando sesión",
+  it("uses PIN and player copy instead of account/password copy", () => {
+    expect(getHeaderAccountAffordance("needsPin")).toEqual({
+      eyebrow: "Acceso con PIN",
+      label: "Entrar con PIN",
     });
 
-    expect(getHeaderAccountAffordance("signedOut")).toEqual({
-      eyebrow: "Tu cuenta",
-      label: "Entrar",
+    expect(getHeaderAccountAffordance("storedPlayer", "Ana Perez")).toEqual({
+      eyebrow: "Jugador guardado",
+      label: "Ana",
     });
   });
 
-  it("only shows primary navigation for signed-in users", () => {
-    expect(shouldShowPrimaryNav("loading")).toBe(false);
-    expect(shouldShowPrimaryNav("signedOut")).toBe(false);
-    expect(shouldShowPrimaryNav("signedIn")).toBe(true);
+  it("shows primary navigation publicly", () => {
+    expect(shouldShowPrimaryNav("needsPin")).toBe(true);
+    expect(shouldShowPrimaryNav("storedPlayer")).toBe(true);
   });
 });

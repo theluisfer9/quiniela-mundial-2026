@@ -1,9 +1,9 @@
 import { ConvexError, v } from "convex/values";
 
 import { query, mutation } from "./_generated/server";
-import { getCurrentUserOrNull } from "./lib/currentUser";
 import { normalizeSoccerScore } from "./lib/scores";
 import { isMatchLocked } from "./lib/visibility";
+import { requirePlayerBySessionToken } from "./players";
 
 const predictionSummary = v.object({
   matchId: v.id("matches"),
@@ -14,6 +14,7 @@ const predictionSummary = v.object({
 
 export const upsertPrediction = mutation({
   args: {
+    sessionToken: v.string(),
     matchId: v.id("matches"),
     homeScore: v.int64(),
     awayScore: v.int64(),
@@ -24,14 +25,7 @@ export const upsertPrediction = mutation({
     updatedAt: v.number(),
   }),
   handler: async (ctx, args) => {
-    const authUser = await getCurrentUserOrNull(ctx);
-    if (!authUser) {
-      throw new ConvexError("Not authenticated");
-    }
-    const userId = authUser.userId;
-    if (!userId) {
-      throw new ConvexError("Not authenticated");
-    }
+    const player = await requirePlayerBySessionToken(ctx, args.sessionToken);
 
     let homeScore: number;
     let awayScore: number;
@@ -53,8 +47,8 @@ export const upsertPrediction = mutation({
 
     const existingPrediction = await ctx.db
       .query("predictions")
-      .withIndex("by_user_id_match_id", (q) =>
-        q.eq("userId", userId).eq("matchId", args.matchId),
+      .withIndex("by_player_id_match_id", (q) =>
+        q.eq("playerId", player.playerId).eq("matchId", args.matchId),
       )
       .unique();
     const updatedAt = Date.now();
@@ -67,7 +61,7 @@ export const upsertPrediction = mutation({
       });
     } else {
       await ctx.db.insert("predictions", {
-        userId,
+        playerId: player.playerId,
         matchId: args.matchId,
         homeScore: BigInt(homeScore),
         awayScore: BigInt(awayScore),
@@ -84,21 +78,14 @@ export const upsertPrediction = mutation({
 });
 
 export const listMyPredictions = query({
-  args: {},
+  args: { sessionToken: v.string() },
   returns: v.array(predictionSummary),
-  handler: async (ctx) => {
-    const authUser = await getCurrentUserOrNull(ctx);
-    if (!authUser) {
-      throw new ConvexError("Not authenticated");
-    }
-    const userId = authUser.userId;
-    if (!userId) {
-      throw new ConvexError("Not authenticated");
-    }
+  handler: async (ctx, args) => {
+    const player = await requirePlayerBySessionToken(ctx, args.sessionToken);
 
     const predictions = await ctx.db
       .query("predictions")
-      .withIndex("by_user_id_match_id", (q) => q.eq("userId", userId))
+      .withIndex("by_player_id_match_id", (q) => q.eq("playerId", player.playerId))
       .collect();
 
     return predictions.map((prediction) => ({
