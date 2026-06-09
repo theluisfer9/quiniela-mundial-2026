@@ -9,9 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@quiniela-mundial-2026/ui/components/dropdown-menu";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { ChevronDown, LogOut } from "lucide-react";
+import { BarChart3, BookOpenText, ChevronDown, ClipboardList, Home, LogOut, UserRound } from "lucide-react";
 import { useState } from "react";
 
 import { AUTH_ENTRY_PATH } from "@/lib/navigation";
@@ -59,33 +59,60 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
       <DropdownMenuTrigger
         render={
           <Button
-            variant="outline"
+            variant="ghost"
             disabled={isLoggingOut}
-            className="h-auto w-full justify-between rounded-[1.35rem] border-border/70 bg-white px-3 py-2 shadow-[0_12px_24px_-20px_rgba(31,36,80,0.4)] sm:w-auto"
+            className="min-h-10 w-auto justify-between rounded-[1rem] border border-[#2A398D]/18 bg-[#2A398D]/10 px-2 py-0 text-[#1f2f78] shadow-[0_12px_24px_-20px_rgba(42,57,141,0.6)] ring-1 ring-[#2A398D]/18 hover:bg-[#2A398D]/14 hover:text-[#1f2f78] aria-expanded:bg-[#2A398D]/14 aria-expanded:text-[#1f2f78] sm:min-h-11 sm:min-w-[10rem] sm:px-3"
           />
         }
       >
-        <span className="flex w-full items-center gap-3 text-left sm:w-auto">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[1rem] bg-primary/10 text-sm font-bold text-primary">
+        <span className="flex min-w-0 items-center gap-2 text-left sm:gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-[0.85rem] bg-[#2A398D] text-white shadow-[0_10px_20px_-14px_rgba(42,57,141,0.9)] sm:hidden">
+            <UserRound className="size-4" />
+          </span>
+          <span className="hidden size-8 shrink-0 items-center justify-center rounded-[0.85rem] bg-[#2A398D] text-sm font-bold text-white shadow-[0_10px_20px_-14px_rgba(42,57,141,0.9)] sm:flex">
             {firstInitial}
           </span>
-          <span className="min-w-0">
-            <span className="block text-[0.65rem] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+          <span className="hidden min-w-0 sm:block">
+            <span className="hidden text-[0.64rem] font-semibold tracking-[0.12em] text-[#2A398D]/70 uppercase sm:block">
               Mi jugador
             </span>
-            <span className="block max-w-28 truncate text-sm font-semibold text-foreground">Hola, {firstName}</span>
+            <span className="block max-w-[4.75rem] truncate text-sm font-semibold leading-tight text-[#1f2f78] sm:max-w-24">{firstName}</span>
           </span>
-          <ChevronDown className="size-4 text-muted-foreground" />
+          <span className="rounded-full bg-white/65 px-2 py-0.5 text-[0.64rem] font-bold tracking-[0.12em] text-[#2A398D]/75 uppercase ring-1 ring-[#2A398D]/10 sm:hidden">
+            Menú
+          </span>
+          <ChevronDown className="size-4 text-[#2A398D]/70" />
         </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-64 rounded-[1.5rem] border-border/70 bg-card p-1">
+      <DropdownMenuContent align="end" className="min-w-56 rounded-[1.35rem] border-border/70 bg-card p-1.5">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="rounded-[1rem] bg-secondary/45 px-3 py-3">
-            <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-primary uppercase">Jugador guardado</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{playerSession.displayName}</p>
-            <p className="text-xs text-muted-foreground">Se validara al abrir Pronósticos.</p>
+          <DropdownMenuLabel className="flex items-center gap-3 rounded-[1rem] px-2.5 py-2">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#2A398D]/10 text-[#2A398D] ring-1 ring-[#2A398D]/15">
+              <UserRound className="size-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[0.68rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Jugador</span>
+              <span className="block truncate text-sm font-semibold text-foreground">{playerSession.displayName}</span>
+            </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem render={<Link to="/" />} className="rounded-[1rem] sm:hidden">
+            <Home className="size-4" />
+            Inicio
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link to="/dashboard" />} className="rounded-[1rem] sm:hidden">
+            <BarChart3 className="size-4" />
+            Tablero
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link to="/manual" />} className="rounded-[1rem] sm:hidden">
+            <BookOpenText className="size-4" />
+            Manual
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="sm:hidden" />
+          <DropdownMenuItem render={<Link to="/pronosticos" search={{ match: undefined }} />} className="rounded-[1rem]">
+            <ClipboardList className="size-4" />
+            Mis partidos
+          </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             disabled={isLoggingOut}
@@ -93,7 +120,7 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
             onClick={() => void handleLogout()}
           >
             <LogOut className="size-4" />
-            {isLoggingOut ? "Cambiando..." : "Cambiar jugador"}
+            {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

@@ -130,10 +130,10 @@ describe("seedGroupStage", () => {
     expect(data.playerSessions).toHaveLength(0);
     expect(data.pinLoginAttempts).toHaveLength(0);
     expect(data.teams.some((team) => team.code === "MEX" && team.groupCode === "A")).toBe(true);
-    expect(data.matches.some((match) => match.matchNumber === 1 && match.stageLabel === "Group A")).toBe(true);
+    expect(data.matches.some((match) => match.matchNumber === 1 && match.stageLabel === "Grupo A")).toBe(true);
 
     expect(data.profiles.map((profile) => profile.displayName)).toEqual(SEEDED_PLAYER_NAMES);
-    expect(data.profiles).toHaveLength(22);
+    expect(data.profiles).toHaveLength(24);
     expect(data.profiles.every((profile) => profile.active === true)).toBe(true);
     expect(data.profiles.every((profile) => profile.createdAt === SEEDED_PROFILE_TIMESTAMP)).toBe(true);
     expect(data.profiles.every((profile) => profile.updatedAt === SEEDED_PROFILE_TIMESTAMP)).toBe(true);

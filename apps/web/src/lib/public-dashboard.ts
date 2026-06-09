@@ -38,6 +38,16 @@ export type PublicDashboardViewModel = {
   totalVisibleMatches: number;
 };
 
+export type PublicDashboardMatchPage = {
+  matches: PublicDashboardMatch[];
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+};
+
 type DerivePublicDashboardInput = {
   matches: PublicDashboardMatchesData | undefined;
   standings: HomeStandingsRow[] | undefined;
@@ -50,12 +60,22 @@ const EMPTY_STATS: PublicDashboardMatchesData["stats"] = {
   bestExactScoreCount: 0,
 };
 
-function buildStatCards(stats: PublicDashboardMatchesData["stats"]): PublicDashboardStatCard[] {
+function buildStatCards({
+  finishedMatchCount,
+  standings,
+  todayMatchCount,
+}: {
+  finishedMatchCount: number;
+  standings: HomeStandingsRow[];
+  todayMatchCount: number;
+}): PublicDashboardStatCard[] {
+  const leader = standings[0];
+
   return [
-    { label: "Lider", value: stats.leaderName ?? "Sin lider" },
-    { label: "Partidos cerrados", value: String(stats.finishedMatchCount) },
-    { label: "Pronosticos contados", value: String(stats.totalPredictionCountForFinishedMatches) },
-    { label: "Mejor exactos", value: String(stats.bestExactScoreCount) },
+    { label: "Lider", value: leader && leader.points > 0 ? leader.name : "Por definir" },
+    { label: "Puntos lider", value: leader ? String(leader.points) : "0" },
+    { label: "Hoy", value: String(todayMatchCount) },
+    { label: "Cerrados", value: String(finishedMatchCount) },
   ];
 }
 
@@ -64,6 +84,26 @@ function toPublicStandingsRows(standings: HomeStandingsRow[]) {
     ...row,
     isCurrentUser: false,
   }));
+}
+
+export function paginatePublicDashboardMatches(
+  matches: PublicDashboardMatch[],
+  { page, pageSize }: { page: number; pageSize: number },
+): PublicDashboardMatchPage {
+  const safePageSize = Math.max(1, Math.floor(pageSize));
+  const pageCount = Math.max(1, Math.ceil(matches.length / safePageSize));
+  const safePage = Math.min(Math.max(1, Math.floor(page)), pageCount);
+  const startIndex = (safePage - 1) * safePageSize;
+
+  return {
+    matches: matches.slice(startIndex, startIndex + safePageSize),
+    page: safePage,
+    pageSize: safePageSize,
+    pageCount,
+    totalCount: matches.length,
+    hasPreviousPage: safePage > 1,
+    hasNextPage: safePage < pageCount,
+  };
 }
 
 export function derivePublicDashboardViewModel({
@@ -77,7 +117,11 @@ export function derivePublicDashboardViewModel({
       upcomingMatches: [],
       finishedMatches: [],
       standings: [],
-      statCards: buildStatCards(EMPTY_STATS),
+      statCards: buildStatCards({
+        finishedMatchCount: EMPTY_STATS.finishedMatchCount,
+        standings: [],
+        todayMatchCount: 0,
+      }),
       totalVisibleMatches: 0,
     };
   }
@@ -93,7 +137,11 @@ export function derivePublicDashboardViewModel({
     upcomingMatches: matches.upcomingMatches,
     finishedMatches: matches.finishedMatches,
     standings: publicStandings,
-    statCards: buildStatCards(matches.stats),
+    statCards: buildStatCards({
+      finishedMatchCount: matches.stats.finishedMatchCount,
+      standings: publicStandings,
+      todayMatchCount: matches.todayMatches.length,
+    }),
     totalVisibleMatches,
   };
 }

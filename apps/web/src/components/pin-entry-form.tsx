@@ -1,6 +1,7 @@
 import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { Input } from "@quiniela-mundial-2026/ui/components/input";
 import { Label } from "@quiniela-mundial-2026/ui/components/label";
+import { Link } from "@tanstack/react-router";
 import { ArrowRight, KeyRound } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
 
@@ -26,7 +27,7 @@ function PinEntryForm({
   headingLevel = "h2",
   isSubmitting = false,
   error = null,
-  submitLabel = "Entrar a pronosticos",
+  submitLabel = "Entrar a mis partidos",
   onSubmit,
 }: PinEntryFormProps) {
   const [pin, setPin] = useState("");
@@ -53,7 +54,7 @@ function PinEntryForm({
           <KeyRound aria-hidden="true" className="size-5" />
         </div>
         <p className="text-[0.7rem] font-bold tracking-[0.22em] text-primary uppercase">Acceso con PIN</p>
-        <Heading className="text-balance font-display text-3xl font-extrabold leading-none tracking-[-0.04em]">
+        <Heading className="text-balance font-display text-3xl font-extrabold leading-none tracking-[-0.04em] text-foreground">
           {title}
         </Heading>
         <p className="max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
@@ -64,7 +65,7 @@ function PinEntryForm({
         className="flex flex-col gap-4 rounded-[1.35rem] border border-border/60 bg-background/70 p-4 sm:p-5"
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor={inputId}>PIN</Label>
+          <Label htmlFor={inputId} className="text-foreground">PIN</Label>
           <Input
             id={inputId}
             name="pin"
@@ -77,7 +78,7 @@ function PinEntryForm({
             onChange={(event) => setPin(formatPinInput(event.target.value))}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
-            className="h-12 rounded-[1rem] border-border/70 bg-white text-center font-mono text-lg font-bold tracking-[0.35em] uppercase"
+            className="h-12 rounded-[1rem] border-border/70 bg-white text-center font-mono text-lg font-bold tracking-[0.35em] text-foreground uppercase placeholder:text-muted-foreground/65"
           />
           {error ? (
             <p id={errorId} role="alert" className="text-sm font-medium text-red-500">
@@ -85,6 +86,10 @@ function PinEntryForm({
             </p>
           ) : null}
         </div>
+
+        <Button className="h-11 rounded-[1rem]" render={<Link to="/manual" />} type="button" variant="outline">
+          Aprende a jugar
+        </Button>
 
         <Button
           type="submit"

@@ -98,6 +98,15 @@ async function seedPublicDashboardData(t: TestInstance) {
       stageLabel: "Group D",
       status: "scheduled",
     });
+    const secondFinishedId = await ctx.db.insert("matches", {
+      kickoffAt: new Date("2026-06-12T01:00:00.000Z").getTime(),
+      homeTeamId: teams.mexicoId,
+      awayTeamId: teams.canadaId,
+      stageLabel: "Group E",
+      status: "finished",
+      homeScore: 1n,
+      awayScore: 1n,
+    });
 
     await ctx.db.insert("predictions", {
       playerId: anaId,
@@ -134,8 +143,28 @@ async function seedPublicDashboardData(t: TestInstance) {
       awayScore: 0n,
       updatedAt: NOW - 60_000,
     });
+    await ctx.db.insert("predictions", {
+      playerId: anaId,
+      matchId: secondFinishedId,
+      homeScore: 1n,
+      awayScore: 0n,
+      updatedAt: NOW - 30_000,
+    });
+    await ctx.db.insert("predictions", {
+      playerId: betoId,
+      matchId: secondFinishedId,
+      homeScore: 1n,
+      awayScore: 1n,
+      updatedAt: NOW - 30_000,
+    });
+    await ctx.db.insert("predictions", {
+      matchId: secondFinishedId,
+      homeScore: 0n,
+      awayScore: 0n,
+      updatedAt: NOW - 30_000,
+    });
 
-    return { yesterdayFinishedId, todayScheduledId, todayLiveId, tomorrowScheduledId };
+    return { yesterdayFinishedId, todayScheduledId, todayLiveId, tomorrowScheduledId, secondFinishedId };
   });
 }
 
@@ -165,6 +194,7 @@ describe("public dashboard", () => {
     ]);
     expect(dashboard.finishedMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
       ids.yesterdayFinishedId,
+      ids.secondFinishedId,
     ]);
     expect(dashboard.finishedMatches[0]).toMatchObject({ homeScore: 2, awayScore: 1 });
     expect(dashboard.todayMatches[0]).not.toHaveProperty("homeScore");
@@ -189,10 +219,10 @@ describe("public dashboard", () => {
     const dashboard = await t.query(api.matches.getPublicDashboardMatches, {});
 
     expect(dashboard.stats).toEqual({
-      leaderName: "Ana",
-      finishedMatchCount: 1,
-      totalPredictionCountForFinishedMatches: 2,
-      bestExactScoreCount: 1,
+      leaderName: "Beto",
+      finishedMatchCount: 2,
+      totalPredictionCountForFinishedMatches: 4,
+      bestExactScoreCount: 2,
     });
   });
 
@@ -203,8 +233,91 @@ describe("public dashboard", () => {
     const standings = await t.query(api.standings.getPublicStandings, {});
 
     expect(standings).toEqual([
-      { rank: 1, name: "Ana", points: 3, rankDelta: 0, isCurrentUser: false },
-      { rank: 2, name: "Beto", points: 3, rankDelta: 0, isCurrentUser: false },
+      { rank: 1, name: "Beto", points: 6, rankDelta: 1, isCurrentUser: false },
+      { rank: 2, name: "Ana", points: 3, rankDelta: -1, isCurrentUser: false },
+    ]);
+  });
+
+  it("returns rich public analytics without exposing scheduled private predictions", async () => {
+    const t = createTest();
+    const ids = await seedPublicDashboardData(t);
+
+    const analytics = await t.query(api.standings.getPublicDashboardAnalytics, {});
+
+    expect(analytics.rows).toEqual([
+      expect.objectContaining({
+        rank: 1,
+        name: "Beto",
+        points: 6,
+        exactScoreCount: 2,
+        outcomeHitCount: 2,
+        predictionCount: 2,
+        precision: 100,
+        leaderGap: 0,
+        rankDelta: 1,
+        currentStreak: 2,
+        longestStreak: 2,
+        nearMissCount: 0,
+        drawPredictionCount: 1,
+        contrarianHitCount: 0,
+        mostCommonScore: "2-1",
+      }),
+      expect.objectContaining({
+        rank: 2,
+        name: "Ana",
+        points: 3,
+        exactScoreCount: 1,
+        outcomeHitCount: 1,
+        predictionCount: 2,
+        precision: 50,
+        leaderGap: 3,
+        rankDelta: -1,
+        currentStreak: -1,
+        longestStreak: 1,
+        nearMissCount: 1,
+        drawPredictionCount: 0,
+        contrarianHitCount: 0,
+        mostCommonScore: "2-1",
+      }),
+    ]);
+    expect(analytics.awardCards.map((award: { label: string }) => award.label)).toEqual([
+      "Nostradamus",
+      "Mas exactos",
+      "Rey de las tragedias",
+      "Senor empate",
+      "Rey del 1-0",
+      "Contra la corriente",
+    ]);
+    expect(analytics.consensusMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
+      ids.yesterdayFinishedId,
+      ids.secondFinishedId,
+      ids.todayLiveId,
+    ]);
+    expect(JSON.stringify(analytics)).not.toContain(String(ids.todayScheduledId));
+    expect(JSON.stringify(analytics)).not.toContain("Legacy No Pin");
+    expect(JSON.stringify(analytics)).not.toContain("Inactive Player");
+    expect(JSON.stringify(analytics)).not.toContain("pinHash");
+    expect(JSON.stringify(analytics)).not.toContain("sessionToken");
+    expect(JSON.stringify(analytics)).not.toContain("predictions");
+  });
+
+  it("does not assign awards before there are real results", async () => {
+    const t = createTest();
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("profiles", { displayName: "Ale", pinHash: "pin:ale", active: true });
+      await ctx.db.insert("profiles", { displayName: "Boris", pinHash: "pin:boris", active: true });
+    });
+
+    const analytics = await t.query(api.standings.getPublicDashboardAnalytics, {});
+
+    expect(analytics.awardCards).toEqual([
+      expect.objectContaining({ label: "Nostradamus", name: "Por definir", value: "0 pts" }),
+      expect.objectContaining({ label: "Mas exactos", name: "Por definir", value: "0 exactos" }),
+      expect.objectContaining({ label: "Rey de las tragedias", name: "Por definir", value: "0 por un gol" }),
+      expect.objectContaining({ label: "Senor empate", name: "Por definir", value: "0 empates" }),
+      expect.objectContaining({ label: "Rey del 1-0", name: "Por definir", value: "1-0" }),
+      expect.objectContaining({ label: "Contra la corriente", name: "Por definir", value: "0 aciertos" }),
     ]);
   });
 });

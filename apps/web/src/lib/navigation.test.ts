@@ -11,8 +11,9 @@ import {
 describe("navigation", () => {
   it("defines the main family-friendly destinations in order", () => {
     expect(PRIMARY_NAV_ITEMS).toEqual([
-      { to: "/", label: "Inicio" },
-      { to: "/pronosticos", label: "Pronósticos" },
+      { to: "/", hash: undefined, label: "Inicio" },
+      { to: "/dashboard", hash: undefined, label: "Tablero" },
+      { to: "/manual", hash: undefined, label: "Manual" },
     ]);
   });
 

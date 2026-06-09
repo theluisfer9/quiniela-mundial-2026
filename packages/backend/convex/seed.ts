@@ -117,3 +117,76 @@ export const seedGroupStage = mutation({
     };
   },
 });
+
+export const rotatePlayerPins = mutation({
+  args: {
+    confirmRotation: v.boolean(),
+    players: v.array(
+      v.object({
+        displayName: v.string(),
+        pin: v.string(),
+      }),
+    ),
+  },
+  returns: v.object({
+    updatedPlayers: v.number(),
+    revokedSessions: v.number(),
+    clearedPinLoginAttempts: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    if (!args.confirmRotation) {
+      throw new ConvexError("confirmRotation must be true");
+    }
+    if (process.env.ENABLE_PIN_ROTATION !== "true") {
+      throw new ConvexError("PIN rotation is not enabled");
+    }
+
+    const now = Date.now();
+    const pinPepper = getPinPepper();
+    const pins = new Set<string>();
+
+    for (const player of args.players) {
+      const normalizedPin = normalizePin(player.pin);
+      if (pins.has(normalizedPin)) {
+        throw new ConvexError(`Duplicate PIN for ${player.displayName}`);
+      }
+      pins.add(normalizedPin);
+    }
+
+    for (const player of args.players) {
+      const profiles = await ctx.db
+        .query("profiles")
+        .filter((q) => q.eq(q.field("displayName"), player.displayName))
+        .collect();
+      const activeProfiles = profiles.filter((profile) => profile.active === true);
+
+      if (activeProfiles.length !== 1) {
+        throw new ConvexError(`Expected exactly one active player named ${player.displayName}`);
+      }
+
+      await ctx.db.patch(activeProfiles[0]._id, {
+        pinHash: await hashPin(normalizePin(player.pin), pinPepper),
+        updatedAt: now,
+      });
+    }
+
+    const sessions = await ctx.db.query("playerSessions").collect();
+    const pinLoginAttempts = await ctx.db.query("pinLoginAttempts").collect();
+
+    for (const session of sessions) {
+      if (session.revokedAt === undefined) {
+        await ctx.db.patch(session._id, { revokedAt: now });
+      }
+    }
+
+    for (const attempt of pinLoginAttempts) {
+      await ctx.db.delete(attempt._id);
+    }
+
+    return {
+      updatedPlayers: args.players.length,
+      revokedSessions: sessions.filter((session) => session.revokedAt === undefined).length,
+      clearedPinLoginAttempts: pinLoginAttempts.length,
+    };
+  },
+});

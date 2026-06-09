@@ -20,11 +20,16 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+      },
       manifest: {
-        name: "quiniela-mundial-2026",
-        short_name: "quiniela-mundial-2026",
-        description: "quiniela-mundial-2026 - PWA Application",
-        theme_color: "#0c0c0c",
+        name: "Quiniela Mundial 2026",
+        short_name: "Quiniela 2026",
+        description: "La quiniela familiar del Mundial 2026.",
+        theme_color: "#fff8f7",
       },
       pwaAssets: { disabled: false, config: true },
       devOptions: { enabled: true },

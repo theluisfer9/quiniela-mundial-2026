@@ -44,6 +44,9 @@ lerna-debug.log*
 .worktrees/
 .superpowers/
 
+# Local sharing docs with player PINs
+docs/private/
+
 # Testing
 coverage
 .nyc_output

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { derivePublicDashboardViewModel, type PublicDashboardMatch } from "./public-dashboard";
+import { derivePublicDashboardViewModel, paginatePublicDashboardMatches, type PublicDashboardMatch } from "./public-dashboard";
 
 const TEAM_ARG = { id: "arg", code: "ARG", name: "Argentina", flagEmoji: "AR" };
 const TEAM_MEX = { id: "mex", code: "MEX", name: "Mexico", flagEmoji: "MX" };
@@ -68,15 +68,24 @@ describe("derivePublicDashboardViewModel", () => {
       totalVisibleMatches: 0,
       standings: [],
     });
-    expect(dashboard.statCards.map((card) => card.value)).toEqual(["Sin lider", "0", "0", "0"]);
+    expect(dashboard.statCards).toEqual([
+      { label: "Lider", value: "Por definir" },
+      { label: "Puntos lider", value: "0" },
+      { label: "Hoy", value: "0" },
+      { label: "Cerrados", value: "0" },
+    ]);
   });
 
-  it("formats public stat labels and values", () => {
+  it("formats public stat labels around the tournament state", () => {
     const dashboard = derivePublicDashboardViewModel({
       matches: {
         todayMatches: [match()],
-        upcomingMatches: [],
-        finishedMatches: [],
+        upcomingMatches: [match({ matchId: "upcoming-1" })],
+        finishedMatches: [
+          match({ matchId: "finished-1", status: "finished" }),
+          match({ matchId: "finished-2", status: "finished" }),
+          match({ matchId: "finished-3", status: "finished" }),
+        ],
         stats: {
           leaderName: "Ana",
           finishedMatchCount: 3,
@@ -89,9 +98,9 @@ describe("derivePublicDashboardViewModel", () => {
 
     expect(dashboard.statCards).toEqual([
       { label: "Lider", value: "Ana" },
-      { label: "Partidos cerrados", value: "3" },
-      { label: "Pronosticos contados", value: "18" },
-      { label: "Mejor exactos", value: "4" },
+      { label: "Puntos lider", value: "12" },
+      { label: "Hoy", value: "1" },
+      { label: "Cerrados", value: "3" },
     ]);
   });
 
@@ -149,5 +158,46 @@ describe("derivePublicDashboardViewModel", () => {
       { rank: 1, name: "Ana", points: 12, rankDelta: 1, isCurrentUser: false },
       { rank: 2, name: "Beto", points: 9, rankDelta: -1, isCurrentUser: false },
     ]);
+  });
+});
+
+describe("paginatePublicDashboardMatches", () => {
+  it("returns a bounded page and page metadata for long match lists", () => {
+    const matches = Array.from({ length: 13 }, (_, index) => match({ matchId: `match-${index + 1}` }));
+
+    expect(paginatePublicDashboardMatches(matches, { page: 1, pageSize: 6 })).toMatchObject({
+      page: 1,
+      pageSize: 6,
+      pageCount: 3,
+      totalCount: 13,
+      hasPreviousPage: false,
+      hasNextPage: true,
+      matches: matches.slice(0, 6),
+    });
+
+    expect(paginatePublicDashboardMatches(matches, { page: 3, pageSize: 6 })).toMatchObject({
+      page: 3,
+      pageCount: 3,
+      hasPreviousPage: true,
+      hasNextPage: false,
+      matches: matches.slice(12),
+    });
+  });
+
+  it("clamps invalid pages to the available range", () => {
+    const matches = Array.from({ length: 2 }, (_, index) => match({ matchId: `match-${index + 1}` }));
+
+    expect(paginatePublicDashboardMatches(matches, { page: 99, pageSize: 6 })).toMatchObject({
+      page: 1,
+      pageCount: 1,
+      matches,
+    });
+
+    expect(paginatePublicDashboardMatches([], { page: 4, pageSize: 6 })).toMatchObject({
+      page: 1,
+      pageCount: 1,
+      matches: [],
+      totalCount: 0,
+    });
   });
 });

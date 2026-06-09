@@ -4,25 +4,21 @@ import { getPredictionDisplayState, getPredictionInputHint, getPredictionStatusL
 
 describe("getPredictionStatusLabel", () => {
   it("returns clear labels for active and saved states", () => {
-    expect(getPredictionStatusLabel("idle")).toBe("Listo para marcar este partido.");
+    expect(getPredictionStatusLabel("idle")).toBe("Pendiente por guardar.");
     expect(getPredictionStatusLabel("saving")).toBe("Guardando tu marcador...");
     expect(getPredictionStatusLabel("saved")).toBe("Marcador guardado.");
     expect(getPredictionStatusLabel("error")).toBe("No pudimos guardar este marcador. Intenta otra vez.");
   });
 
   it("returns explicit copy when the match is locked", () => {
-    expect(getPredictionStatusLabel("locked")).toBe("Pronostico cerrado.");
+    expect(getPredictionStatusLabel("locked")).toBe("Partido cerrado.");
   });
 });
 
 describe("getPredictionInputHint", () => {
-  it("keeps score-entry guidance truthful about saving on field exit", () => {
-    expect(getPredictionInputHint({ side: "home", state: "idle" })).toBe(
-      "Escribe los goles del local y sal del campo para guardar.",
-    );
-    expect(getPredictionInputHint({ side: "away", state: "idle" })).toBe(
-      "Escribe los goles de la visita y sal del campo para guardar.",
-    );
+  it("keeps score-entry hints focused on the current input", () => {
+    expect(getPredictionInputHint({ side: "home", state: "idle" })).toBe("Goles del equipo local.");
+    expect(getPredictionInputHint({ side: "away", state: "idle" })).toBe("Goles del equipo visitante.");
   });
 });
 

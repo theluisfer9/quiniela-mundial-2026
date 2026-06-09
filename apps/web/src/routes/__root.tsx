@@ -14,12 +14,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: "Quiniela Mundial 2026 | Pronosticos en familia",
+        title: "Quiniela Mundial 2026 | Pronósticos en familia",
       },
       {
         name: "description",
         content:
-          "Quiniela Mundial 2026 is a cheerful prediction app for tracking matches, entering scores, and playing the tournament with friends and family.",
+          "Quiniela familiar para cargar marcadores, seguir la tabla y jugar el Mundial 2026.",
       },
       {
         name: "theme-color",
@@ -42,7 +42,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         rel: "icon",
-        href: "/favicon.ico",
+        type: "image/svg+xml",
+        href: "https://upload.wikimedia.org/wikipedia/en/1/17/2026_FIFA_World_Cup_emblem.svg",
       },
     ],
   }),
@@ -66,9 +67,9 @@ function RootComponent() {
           Skip to content
         </a>
         <div className="min-h-svh bg-[radial-gradient(circle_at_18%_0%,rgba(230,29,37,0.12),transparent_26%),radial-gradient(circle_at_92%_18%,rgba(42,57,141,0.12),transparent_24%),linear-gradient(180deg,#fff8f7_0%,#fff0ef_42%,#ffffff_100%)] text-foreground">
-          <div className="mx-auto grid min-h-svh w-full max-w-6xl grid-rows-[auto_1fr] px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
             <Header />
-            <main id="main-content" tabIndex={-1} className="pb-24 pt-8 sm:pb-10 sm:pt-6">
+            <main id="main-content" tabIndex={-1} className="pb-3 pt-3 sm:pb-8 sm:pt-6">
               <Outlet />
             </main>
           </div>

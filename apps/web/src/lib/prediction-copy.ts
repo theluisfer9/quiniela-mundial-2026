@@ -8,11 +8,11 @@ type PredictionScoreValue = {
 type PredictionInputSide = "home" | "away";
 
 const PREDICTION_STATUS_LABELS: Record<PredictionSaveState, string> = {
-  idle: "Listo para marcar este partido.",
+  idle: "Pendiente por guardar.",
   saving: "Guardando tu marcador...",
   saved: "Marcador guardado.",
   error: "No pudimos guardar este marcador. Intenta otra vez.",
-  locked: "Pronostico cerrado.",
+  locked: "Partido cerrado.",
 };
 
 export function getPredictionStatusLabel(state: PredictionSaveState) {
@@ -29,16 +29,14 @@ export function getPredictionInputHint({ side, state }: { side: PredictionInputS
   }
 
   if (state === "error") {
-    return "Revisa el marcador y sal del campo para reintentar.";
+    return "Revisa el marcador y vuelve a guardar.";
   }
 
   if (state === "saved") {
-    return "Marcador guardado. Si lo cambias, sal del campo para volver a guardar.";
+    return "Marcador guardado. Si lo cambias, vuelve a presionar Guardar.";
   }
 
-  return side === "home"
-    ? "Escribe los goles del local y sal del campo para guardar."
-    : "Escribe los goles de la visita y sal del campo para guardar.";
+  return side === "home" ? "Goles del equipo local." : "Goles del equipo visitante.";
 }
 
 export function getPredictionDisplayState({

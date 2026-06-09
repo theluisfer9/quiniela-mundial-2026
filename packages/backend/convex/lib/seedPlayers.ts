@@ -1,5 +1,6 @@
 export const SEEDED_PROFILE_TIMESTAMP = Date.UTC(2026, 0, 1);
 
+// Seed PINs are non-production placeholders. Rotate PINs after seeding real data.
 export const seededPlayers = [
   { displayName: "Boris", pin: "B0R1" },
   { displayName: "Q", pin: "Q026" },
@@ -23,4 +24,6 @@ export const seededPlayers = [
   { displayName: "Rocio", pin: "RC26" },
   { displayName: "Eve", pin: "EV26" },
   { displayName: "Rob", pin: "RB26" },
+  { displayName: "Rolex", pin: "RX26" },
+  { displayName: "China", pin: "CN26" },
 ] as const;

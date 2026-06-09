@@ -2,8 +2,9 @@ export const AUTH_ENTRY_PATH = "/" as const;
 export const POST_AUTH_REDIRECT_PATH = "/" as const;
 
 export const PRIMARY_NAV_ITEMS = [
-  { to: "/", label: "Inicio" },
-  { to: "/pronosticos", label: "Pronósticos" },
+  { to: "/", hash: undefined, label: "Inicio" },
+  { to: "/dashboard", hash: undefined, label: "Tablero" },
+  { to: "/manual", hash: undefined, label: "Manual" },
 ] as const;
 
 export type HeaderAccountState = "needsPin" | "storedPlayer";

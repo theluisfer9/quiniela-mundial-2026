@@ -10,12 +10,15 @@ const app = await alchemy("quiniela-mundial-2026");
 export const web = await Vite("web", {
   cwd: "../../apps/web",
   assets: "dist",
+  url: false,
+  adopt: true,
+  domains: [{ domainName: "quiniela.luisralda.com", adopt: true }],
   bindings: {
     VITE_CONVEX_URL: alchemy.env.VITE_CONVEX_URL!,
     VITE_CONVEX_SITE_URL: alchemy.env.VITE_CONVEX_SITE_URL!,
   },
 });
 
-console.log(`Web    -> ${web.url}`);
+console.log("Web    -> https://quiniela.luisralda.com");
 
 await app.finalize();

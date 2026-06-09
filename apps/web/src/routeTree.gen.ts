@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PronosticosRouteImport } from './routes/pronosticos'
+import { Route as ManualRouteImport } from './routes/manual'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 
 const PronosticosRoute = PronosticosRouteImport.update({
   id: '/pronosticos',
   path: '/pronosticos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManualRoute = ManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/manual': typeof ManualRoute
   '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/manual': typeof ManualRoute
   '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/manual': typeof ManualRoute
   '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/pronosticos'
+  fullPaths: '/' | '/dashboard' | '/manual' | '/pronosticos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/pronosticos'
-  id: '__root__' | '/' | '/dashboard' | '/pronosticos'
+  to: '/' | '/dashboard' | '/manual' | '/pronosticos'
+  id: '__root__' | '/' | '/dashboard' | '/manual' | '/pronosticos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  ManualRoute: typeof ManualRoute
   PronosticosRoute: typeof PronosticosRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/pronosticos'
       fullPath: '/pronosticos'
       preLoaderRoute: typeof PronosticosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manual': {
+      id: '/manual'
+      path: '/manual'
+      fullPath: '/manual'
+      preLoaderRoute: typeof ManualRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  ManualRoute: ManualRoute,
   PronosticosRoute: PronosticosRoute,
 }
 export const routeTree = rootRouteImport

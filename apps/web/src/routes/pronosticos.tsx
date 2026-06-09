@@ -6,9 +6,10 @@ import { Skeleton } from "@quiniela-mundial-2026/ui/components/skeleton";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useConvex, useMutation } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { PinEntryForm } from "@/components/pin-entry-form";
-import { PredictionCard } from "@/components/predictions/prediction-card";
+import { PredictionCard, type PredictionDraftState } from "@/components/predictions/prediction-card";
 import { PredictionProgress } from "@/components/predictions/prediction-progress";
 import type { HomeMatchSummary } from "@/lib/home-data";
 import {
@@ -46,8 +47,8 @@ type PrivateDataState =
   | { state: "ready"; matches: MatchesResult; predictions: PredictionResult[] }
   | { state: "error"; message: string };
 
-const SESSION_EXPIRED_MESSAGE = "Tu sesion vencio. Ingresa tu PIN de nuevo.";
-const LOAD_ERROR_MESSAGE = "No pudimos cargar tus pronosticos. Revisa tu conexion e intenta de nuevo.";
+const SESSION_EXPIRED_MESSAGE = "Vuelve a entrar con tu PIN para seguir cargando marcadores.";
+const LOAD_ERROR_MESSAGE = "No pudimos cargar tus partidos. Revisa tu conexion e intenta de nuevo.";
 
 function isNotAuthenticatedError(error: unknown) {
   return error instanceof Error && error.message.includes("Not authenticated");
@@ -73,6 +74,7 @@ function PredictionsRoute() {
   const [now, setNow] = useState(() => Date.now());
   const [saveStateByMatchId, setSaveStateByMatchId] = useState<Record<string, PredictionSaveState>>({});
   const [predictionOverrides, setPredictionOverrides] = useState<Record<string, PredictionValue>>({});
+  const [focusedDraftState, setFocusedDraftState] = useState<PredictionDraftState | null>(null);
   const inFlightSaveByMatchIdRef = useRef<Record<string, number>>({});
   const saveRequestSequenceRef = useRef(0);
 
@@ -191,11 +193,11 @@ function PredictionsRoute() {
     predictionByMatchId,
   });
   const focusedMatch = upcomingMatches[focusedMatchIndex];
-  const remainingCount = upcomingMatches.filter((upcomingMatch) => {
+  const nextBatchMatches = getNextBatchMatches(upcomingMatches);
+  const nextBatchPendingCount = nextBatchMatches.filter((upcomingMatch) => {
     const key = String(upcomingMatch.matchId);
     return !predictionByMatchId.has(key) && now < upcomingMatch.kickoffAt;
   }).length;
-
   function clearSessionForPinEntry(message = SESSION_EXPIRED_MESSAGE) {
     clearPlayerSession();
     setStoredSession(null);
@@ -259,14 +261,14 @@ function PredictionsRoute() {
   if (accessState.state === "needsPin" || accessState.state === "invalidSession") {
     return (
       <AppSection
-        eyebrow="Pronosticos"
+        eyebrow="Mis partidos"
         title="Ingresa tu PIN para cargar marcadores"
-        description="Usa el PIN que te compartieron para guardar pronosticos y revisar fechas limite."
+        description="Entra como tu jugador para ver qué partidos tienes pendientes."
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(0,24rem)_auto] lg:items-start">
           <PinEntryForm
             title="Acceso de jugador"
-            description="Ingresa tu PIN para cargar marcadores. La tabla publica no necesita sesion."
+            description="Usa tu PIN para abrir tus partidos y guardar marcadores."
             headingLevel="h2"
             isSubmitting={isSubmittingPin}
             error={pinError}
@@ -300,16 +302,16 @@ function PredictionsRoute() {
   if (!focusedMatch) {
     return (
       <AppSection
-        eyebrow="Pronosticos"
+        eyebrow="Mis partidos"
         title="No hay partidos abiertos"
         description="Cuando publiquemos el siguiente bloque, podrás cargar marcadores desde aquí."
       >
         <div className="space-y-3 text-sm leading-6 text-muted-foreground">
-          <p>Esta pantalla muestra tus pronósticos mientras cada partido sigue abierto.</p>
+          <p>Cuando haya partidos disponibles, aquí aparecerán para que pongas tus marcadores.</p>
           <div className="flex flex-wrap gap-3">
             <Button render={<a href="/" />}>Volver al inicio</Button>
-            <Button render={<a href="/dashboard" />} variant="outline">
-              Ir al dashboard
+            <Button render={<a href="/" />} variant="outline">
+              Ver la tabla
             </Button>
           </div>
         </div>
@@ -386,6 +388,9 @@ function PredictionsRoute() {
         ...current,
         [focusedMatchId]: "saved",
       }));
+      toast.success("Marcador guardado", {
+        description: `${focusedMatch.homeTeam.name} ${scores.homeScore} - ${scores.awayScore} ${focusedMatch.awayTeam.name}`,
+      });
     } catch (error) {
       if (inFlightSaveByMatchIdRef.current[focusedMatchId] !== requestId) {
         return;
@@ -401,6 +406,9 @@ function PredictionsRoute() {
         ...current,
         [focusedMatchId]: nextState,
       }));
+      toast.error(nextState === "locked" ? "Este partido ya cerró" : "No se pudo guardar", {
+        description: nextState === "locked" ? "El marcador quedó en modo lectura." : "Intenta guardar de nuevo.",
+      });
     } finally {
       if (inFlightSaveByMatchIdRef.current[focusedMatchId] === requestId) {
         delete inFlightSaveByMatchIdRef.current[focusedMatchId];
@@ -410,27 +418,32 @@ function PredictionsRoute() {
 
   return (
     <AppSection
-      eyebrow="Pronosticos"
+      eyebrow="Mis partidos"
       title="Carga tus marcadores"
-      description="Avanza partido por partido. Guardamos cada marcador cuando está completo."
+      description="El flujo es simple: revisa el partido, escribe los dos goles y sigue al siguiente."
+      className="px-3 py-3 sm:px-6 sm:py-6"
+      contentClassName="space-y-3 sm:space-y-4"
       action={
-        <Button render={<a href="/" />} variant="outline">
+        <Button className="rounded-[1rem]" render={<a href="/" />} variant="outline">
           Volver al inicio
         </Button>
       }
     >
-      <div className="space-y-4">
-        <PredictionProgress
-          currentIndex={focusedMatchIndex}
-          hasNext={focusedMatchIndex < upcomingMatches.length - 1}
-          hasPrevious={focusedMatchIndex > 0}
-          isLocked={isLocked}
-          remainingCount={remainingCount}
-          totalCount={upcomingMatches.length}
-          onNext={() => moveToMatch(focusedMatchIndex + 1)}
-          onPrevious={() => moveToMatch(focusedMatchIndex - 1)}
-        />
-
+      <div className="space-y-3 pb-24 sm:space-y-4 sm:pb-0">
+        <div className="hidden gap-3 rounded-[1.5rem] border border-[#2A398D]/15 bg-[#2A398D]/6 p-4 text-sm text-[#1f2f78] sm:grid sm:grid-cols-3 sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">1</span>
+            <p><span className="font-bold">Revisa el partido.</span> Confirma equipos y hora de cierre.</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">2</span>
+            <p><span className="font-bold">Pon los goles.</span> Llena local y visita.</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">3</span>
+            <p><span className="font-bold">Guarda.</span> Presiona Guardar marcador y luego sigue al siguiente partido.</p>
+          </div>
+        </div>
         <PredictionCard
           isLocked={isLocked}
           isSaving={status === "saving"}
@@ -446,17 +459,106 @@ function PredictionsRoute() {
               [focusedMatchId]: "idle",
             }));
           }}
+          onDraftStateChange={setFocusedDraftState}
           onSave={handleSave}
         />
+
+        <PredictionProgress
+          currentIndex={focusedMatchIndex}
+          hasNext={focusedMatchIndex < upcomingMatches.length - 1}
+          hasPrevious={focusedMatchIndex > 0}
+          nextBatchPendingCount={nextBatchPendingCount}
+          nextBatchTotalCount={nextBatchMatches.length}
+          totalCount={upcomingMatches.length}
+          onNext={() => moveToMatch(focusedMatchIndex + 1)}
+          onPrevious={() => moveToMatch(focusedMatchIndex - 1)}
+        />
       </div>
+      <MobilePredictionWizardNav
+        canSave={focusedDraftState?.canSave ?? false}
+        hasNext={focusedMatchIndex < upcomingMatches.length - 1}
+        hasPrevious={focusedMatchIndex > 0}
+        isSaving={status === "saving"}
+        match={focusedMatch}
+        sameDateMatchCount={getSameDateMatchCount(upcomingMatches, focusedMatch)}
+        scores={focusedDraftState?.scores ?? null}
+        statusLabel={focusedDraftState?.displayState === "saved" && focusedDraftState.draftMatchesSavedScore ? "Guardado" : undefined}
+        onNext={() => moveToMatch(focusedMatchIndex + 1)}
+        onPrevious={() => moveToMatch(focusedMatchIndex - 1)}
+        onSave={(scores) => void handleSave(scores)}
+      />
     </AppSection>
   );
 }
 
+function MobilePredictionWizardNav({
+  canSave,
+  hasNext,
+  hasPrevious,
+  isSaving,
+  match,
+  sameDateMatchCount,
+  onNext,
+  onPrevious,
+  onSave,
+  scores,
+  statusLabel,
+}: {
+  canSave: boolean;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  isSaving: boolean;
+  match: HomeMatchSummary;
+  sameDateMatchCount: number;
+  scores: { homeScore: number; awayScore: number } | null;
+  statusLabel?: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  onSave: (scores: { homeScore: number; awayScore: number }) => void;
+}) {
+  const dateLabel = shortDateFormatter.format(match.kickoffAt);
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 px-3 pb-[max(1.1rem,calc(0.85rem+env(safe-area-inset-bottom)))] pt-3 shadow-[0_-18px_45px_-34px_rgba(42,57,141,0.65)] backdrop-blur sm:hidden">
+      <div className="mx-auto grid max-w-md gap-2">
+        <div className="flex items-center justify-between gap-3 px-1 text-xs font-semibold text-muted-foreground">
+          <span>{`Fecha ${dateLabel}`}</span>
+          <span>{`${sameDateMatchCount} partidos`}</span>
+        </div>
+        <div className="grid grid-cols-[0.8fr_1.4fr_0.8fr] gap-2">
+          <Button className="h-12 rounded-[1rem]" disabled={!hasPrevious || isSaving} onClick={onPrevious} type="button" variant="outline">
+            Anterior
+          </Button>
+          <Button
+            className="h-12 rounded-[1rem] text-sm font-bold"
+            disabled={!canSave || !scores || isSaving}
+            onClick={() => {
+              if (scores) {
+                onSave(scores);
+              }
+            }}
+            type="button"
+          >
+            {isSaving ? "Guardando..." : statusLabel ?? "Guardar"}
+          </Button>
+          <Button className="h-12 rounded-[1rem]" disabled={!hasNext || isSaving} onClick={onNext} type="button" variant="outline">
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const shortDateFormatter = new Intl.DateTimeFormat("es-MX", {
+  day: "numeric",
+  month: "short",
+});
+
 function PredictionsLoadingState() {
   return (
     <AppSection
-      eyebrow="Pronosticos"
+      eyebrow="Mis partidos"
       title="Cargando partidos"
       description="Estamos preparando tus próximos cierres y marcadores guardados."
     >
@@ -478,7 +580,7 @@ function PredictionsRetryState({
   onRetry: () => void;
 }) {
   return (
-    <AppSection eyebrow="Pronosticos" title={title} description={message}>
+    <AppSection eyebrow="Mis partidos" title={title} description={message}>
       <div className="flex flex-wrap gap-3">
         <Button type="button" onClick={onRetry}>
           Intentar de nuevo
@@ -513,4 +615,35 @@ function getFocusedMatchIndex({
 
   const firstPendingIndex = upcomingMatches.findIndex((upcomingMatch) => !predictionByMatchId.has(String(upcomingMatch.matchId)));
   return firstPendingIndex >= 0 ? firstPendingIndex : 0;
+}
+
+function getNextBatchMatches(upcomingMatches: HomeMatchSummary[]) {
+  const nextMatch = upcomingMatches[0];
+
+  if (!nextMatch) {
+    return [];
+  }
+
+  const nextMatchDate = new Date(nextMatch.kickoffAt);
+  return upcomingMatches.filter((upcomingMatch) => {
+    const kickoffDate = new Date(upcomingMatch.kickoffAt);
+    return (
+      kickoffDate.getFullYear() === nextMatchDate.getFullYear() &&
+      kickoffDate.getMonth() === nextMatchDate.getMonth() &&
+      kickoffDate.getDate() === nextMatchDate.getDate()
+    );
+  });
+}
+
+function getSameDateMatchCount(upcomingMatches: HomeMatchSummary[], match: HomeMatchSummary) {
+  const matchDate = new Date(match.kickoffAt);
+
+  return upcomingMatches.filter((upcomingMatch) => {
+    const kickoffDate = new Date(upcomingMatch.kickoffAt);
+    return (
+      kickoffDate.getFullYear() === matchDate.getFullYear() &&
+      kickoffDate.getMonth() === matchDate.getMonth() &&
+      kickoffDate.getDate() === matchDate.getDate()
+    );
+  }).length;
 }

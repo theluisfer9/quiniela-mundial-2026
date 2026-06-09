@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { query, type QueryCtx } from "./_generated/server";
 import { calculatePredictionPoints, buildStandingsRows } from "./lib/scoring";
 import { normalizeSoccerScore } from "./lib/scores";
+import { getSpanishStageLabel, getSpanishTeamName } from "./lib/teamDisplay";
 import { requirePlayerBySessionToken } from "./players";
 
 const teamSummary = v.object({
@@ -103,18 +104,18 @@ function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, 
   } = {
     matchId: match._id,
     kickoffAt: match.kickoffAt,
-    stageLabel: match.stageLabel,
+    stageLabel: getSpanishStageLabel(match.stageLabel),
     status: match.status,
     homeTeam: {
       id: homeTeam._id,
       code: homeTeam.code,
-      name: homeTeam.name,
+      name: getSpanishTeamName(homeTeam.code, homeTeam.name),
       flagEmoji: homeTeam.flagEmoji,
     },
     awayTeam: {
       id: awayTeam._id,
       code: awayTeam.code,
-      name: awayTeam.name,
+      name: getSpanishTeamName(awayTeam.code, awayTeam.name),
       flagEmoji: awayTeam.flagEmoji,
     },
   };
@@ -230,17 +231,17 @@ export const listHomeMatches = query({
       return [{
         matchId: match._id,
         kickoffAt: match.kickoffAt,
-        stageLabel: match.stageLabel,
+        stageLabel: getSpanishStageLabel(match.stageLabel),
         homeTeam: {
           id: homeTeam._id,
           code: homeTeam.code,
-          name: homeTeam.name,
+          name: getSpanishTeamName(homeTeam.code, homeTeam.name),
           flagEmoji: homeTeam.flagEmoji,
         },
         awayTeam: {
           id: awayTeam._id,
           code: awayTeam.code,
-          name: awayTeam.name,
+          name: getSpanishTeamName(awayTeam.code, awayTeam.name),
           flagEmoji: awayTeam.flagEmoji,
         },
         hasPrediction: predictedMatchIds.has(match._id),
