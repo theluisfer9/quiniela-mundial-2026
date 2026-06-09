@@ -93,3 +93,49 @@ export const addPinPlayers = mutation({
     return { createdPlayers };
   },
 });
+
+export const renamePinPlayer = mutation({
+  args: {
+    currentDisplayName: v.string(),
+    nextDisplayName: v.string(),
+  },
+  returns: v.object({
+    renamedPlayers: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    if (process.env.ENABLE_PLAYER_MANAGEMENT !== "true") {
+      throw new Error("Player management is not enabled");
+    }
+
+    const currentDisplayName = args.currentDisplayName.trim();
+    const nextDisplayName = args.nextDisplayName.trim();
+    if (!currentDisplayName || !nextDisplayName) {
+      throw new Error("Player displayName is required");
+    }
+
+    const existingNextProfiles = await ctx.db
+      .query("profiles")
+      .filter((q) => q.eq(q.field("displayName"), nextDisplayName))
+      .collect();
+    if (existingNextProfiles.some((profile) => profile.active === true)) {
+      throw new Error(`Active player already exists: ${nextDisplayName}`);
+    }
+
+    const currentProfiles = await ctx.db
+      .query("profiles")
+      .filter((q) => q.eq(q.field("displayName"), currentDisplayName))
+      .collect();
+    const activeProfiles = currentProfiles.filter((profile) => profile.active === true);
+
+    if (activeProfiles.length !== 1) {
+      throw new Error(`Expected exactly one active player named ${currentDisplayName}`);
+    }
+
+    await ctx.db.patch(activeProfiles[0]._id, {
+      displayName: nextDisplayName,
+      updatedAt: Date.now(),
+    });
+
+    return { renamedPlayers: 1 };
+  },
+});

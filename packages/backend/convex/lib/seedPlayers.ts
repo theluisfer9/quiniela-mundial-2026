@@ -24,6 +24,6 @@ export const seededPlayers = [
   { displayName: "Rocio", pin: "RC26" },
   { displayName: "Eve", pin: "EV26" },
   { displayName: "Rob", pin: "RB26" },
-  { displayName: "Rolex", pin: "RX26" },
+  { displayName: "Yuyito", pin: "YY26" },
   { displayName: "China", pin: "CN26" },
 ] as const;
