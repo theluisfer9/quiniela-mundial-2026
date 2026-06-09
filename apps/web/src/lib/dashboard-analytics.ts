@@ -49,14 +49,47 @@ export type DashboardSummaryMatchData = {
   }>;
 };
 
-const nextKickoffFormatter = new Intl.DateTimeFormat("es-MX", {
+function createNextKickoffFormatter(locale = "es-MX") {
+  return new Intl.DateTimeFormat(locale, {
   day: "numeric",
   hour: "numeric",
   minute: "2-digit",
   month: "short",
-});
+  });
+}
 
-export function getDashboardSummaryCards(data: DashboardAnalyticsData | undefined, matches?: DashboardSummaryMatchData) {
+export function getDashboardSummaryCards(
+  data: DashboardAnalyticsData | undefined,
+  matches?: DashboardSummaryMatchData,
+  options: {
+    labels?: {
+      leader: string;
+      mostExact: string;
+      bestStreak: string;
+      nextDeadline: string;
+      undefined: string;
+      noClosedMatches: string;
+      markers: (count: number) => string;
+      points: (count: number) => string;
+      consecutiveHits: (count: number) => string;
+      noScheduledMatches: string;
+    };
+    locale?: string;
+  } = {},
+) {
+  const labels = options.labels ?? {
+    leader: "Lider",
+    mostExact: "Mas exactos",
+    bestStreak: "Mejor racha",
+    nextDeadline: "Proximo cierre",
+    undefined: "Por definir",
+    noClosedMatches: "Sin partidos cerrados",
+    markers: (count: number) => `${count} marcadores`,
+    points: (count: number) => `${count} puntos`,
+    consecutiveHits: (count: number) => `${count} aciertos seguidos`,
+    noScheduledMatches: "Sin partidos programados",
+  };
+  const nextKickoffFormatter = createNextKickoffFormatter(options.locale);
   const leader = data?.rows.find((row) => row.points > 0) ?? null;
   const nextMatch = matches?.upcomingMatches[0] ?? null;
   const bestExact = data?.rows.reduce<DashboardAnalyticsRow | null>((current, row) => {
@@ -75,37 +108,51 @@ export function getDashboardSummaryCards(data: DashboardAnalyticsData | undefine
   const hasBestStreak = (bestStreak?.longestStreak ?? 0) > 0;
 
   return [
-    { label: "Lider", value: leader?.name ?? "Por definir", detail: leader ? `${leader.points} puntos` : "Sin partidos cerrados" },
-    { label: "Mas exactos", value: hasBestExact ? bestExact!.name : "Por definir", detail: `${bestExact?.exactScoreCount ?? 0} marcadores` },
-    { label: "Mejor racha", value: hasBestStreak ? bestStreak!.name : "Por definir", detail: `${bestStreak?.longestStreak ?? 0} aciertos seguidos` },
+    { label: labels.leader, value: leader?.name ?? labels.undefined, detail: leader ? labels.points(leader.points) : labels.noClosedMatches },
+    { label: labels.mostExact, value: hasBestExact ? bestExact!.name : labels.undefined, detail: labels.markers(bestExact?.exactScoreCount ?? 0) },
+    { label: labels.bestStreak, value: hasBestStreak ? bestStreak!.name : labels.undefined, detail: labels.consecutiveHits(bestStreak?.longestStreak ?? 0) },
     {
-      label: "Proximo cierre",
-      value: nextMatch ? nextKickoffFormatter.format(nextMatch.kickoffAt) : "Por definir",
-      detail: nextMatch ? `${nextMatch.homeTeam.name} vs ${nextMatch.awayTeam.name}` : "Sin partidos programados",
+      label: labels.nextDeadline,
+      value: nextMatch ? nextKickoffFormatter.format(nextMatch.kickoffAt) : labels.undefined,
+      detail: nextMatch ? `${nextMatch.homeTeam.name} vs ${nextMatch.awayTeam.name}` : labels.noScheduledMatches,
     },
   ];
 }
 
-export function formatRankDelta(delta: -1 | 0 | 1) {
+export function formatRankDelta(
+  delta: -1 | 0 | 1,
+  labels = {
+    up: "Sube",
+    down: "Baja",
+    same: "Igual",
+  },
+) {
   if (delta > 0) {
-    return "Sube";
+    return labels.up;
   }
 
   if (delta < 0) {
-    return "Baja";
+    return labels.down;
   }
 
-  return "Igual";
+  return labels.same;
 }
 
-export function formatStreak(streak: number) {
+export function formatStreak(
+  streak: number,
+  labels = {
+    hits: (count: number) => `${count} acertados`,
+    misses: (count: number) => `${count} fallados`,
+    none: "Sin racha",
+  },
+) {
   if (streak > 0) {
-    return `${streak} acertados`;
+    return labels.hits(streak);
   }
 
   if (streak < 0) {
-    return `${Math.abs(streak)} fallados`;
+    return labels.misses(Math.abs(streak));
   }
 
-  return "Sin racha";
+  return labels.none;
 }

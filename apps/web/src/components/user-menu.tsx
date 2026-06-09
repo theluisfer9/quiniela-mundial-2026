@@ -15,6 +15,7 @@ import { BarChart3, BookOpenText, ChevronDown, ClipboardList, Home, LogOut, User
 import { useState } from "react";
 
 import { AUTH_ENTRY_PATH } from "@/lib/navigation";
+import { useI18n } from "@/lib/i18n";
 import { clearPlayerSession, type StoredPlayerSession } from "@/lib/player-session";
 
 type UserMenuProps = {
@@ -23,10 +24,11 @@ type UserMenuProps = {
 };
 
 export default function UserMenu({ playerSession, onPlayerSessionCleared }: UserMenuProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const logoutPlayer = useMutation(api.players.logout);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const firstName = playerSession.displayName.trim().split(/\s+/)[0] || "Jugador";
+  const firstName = playerSession.displayName.trim().split(/\s+/)[0] || t.common.playerFallback;
   const firstInitial = firstName.charAt(0).toUpperCase();
 
   async function handleLogout() {
@@ -41,14 +43,14 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
         await logoutPlayer({ sessionToken: playerSession.sessionToken });
       }
     } catch (error) {
-      console.warn("No pudimos cerrar la sesión remota del jugador.", error);
+      console.warn(t.errors.remoteLogout, error);
     } finally {
       clearPlayerSession();
       onPlayerSessionCleared();
       try {
         await navigate({ to: AUTH_ENTRY_PATH });
       } catch (error) {
-        console.warn("No pudimos navegar al inicio después de cambiar jugador.", error);
+        console.warn(t.errors.navigateAfterLogout, error);
         setIsLoggingOut(false);
       }
     }
@@ -74,12 +76,12 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
           </span>
           <span className="hidden min-w-0 sm:block">
             <span className="hidden text-[0.64rem] font-semibold tracking-[0.12em] text-[#2A398D]/70 uppercase sm:block">
-              Mi jugador
+              {t.nav.playerMenu}
             </span>
             <span className="block max-w-[4.75rem] truncate text-sm font-semibold leading-tight text-[#1f2f78] sm:max-w-24">{firstName}</span>
           </span>
           <span className="rounded-full bg-white/65 px-2 py-0.5 text-[0.64rem] font-bold tracking-[0.12em] text-[#2A398D]/75 uppercase ring-1 ring-[#2A398D]/10 sm:hidden">
-            Menú
+            {t.nav.menu}
           </span>
           <ChevronDown className="size-4 text-[#2A398D]/70" />
         </span>
@@ -91,27 +93,27 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
               <UserRound className="size-4" />
             </span>
             <span className="min-w-0">
-              <span className="block text-[0.68rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Jugador</span>
+              <span className="block text-[0.68rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">{t.nav.player}</span>
               <span className="block truncate text-sm font-semibold text-foreground">{playerSession.displayName}</span>
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem render={<Link to="/" />} className="rounded-[1rem] sm:hidden">
             <Home className="size-4" />
-            Inicio
+            {t.common.home}
           </DropdownMenuItem>
           <DropdownMenuItem render={<Link to="/dashboard" />} className="rounded-[1rem] sm:hidden">
             <BarChart3 className="size-4" />
-            Tablero
+            {t.common.dashboard}
           </DropdownMenuItem>
           <DropdownMenuItem render={<Link to="/manual" />} className="rounded-[1rem] sm:hidden">
             <BookOpenText className="size-4" />
-            Manual
+            {t.common.manual}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="sm:hidden" />
           <DropdownMenuItem render={<Link to="/pronosticos" search={{ match: undefined }} />} className="rounded-[1rem]">
             <ClipboardList className="size-4" />
-            Mis partidos
+            {t.common.myMatches}
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
@@ -120,7 +122,7 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
             onClick={() => void handleLogout()}
           >
             <LogOut className="size-4" />
-            {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
+            {isLoggingOut ? t.nav.loggingOut : t.nav.logout}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

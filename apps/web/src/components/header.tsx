@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { LogIn, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { LanguageToggle } from "@/components/language-toggle";
 import UserMenu from "@/components/user-menu";
 import {
   AUTH_ENTRY_PATH,
@@ -15,12 +16,23 @@ import {
   subscribeToPlayerSessionChanges,
   type StoredPlayerSession,
 } from "@/lib/player-session";
+import { useI18n } from "@/lib/i18n";
 
 export default function Header() {
+  const { t } = useI18n();
   const [storedSession, setStoredSession] = useState<StoredPlayerSession | null>(() => getStoredPlayerSession());
   const accountState = getHeaderAccountState(storedSession);
   const showPrimaryNav = shouldShowPrimaryNav(accountState);
-  const accountAffordance = getHeaderAccountAffordance(accountState, storedSession?.displayName);
+  const accountAffordance = getHeaderAccountAffordance(accountState, storedSession?.displayName, {
+    needsPin: {
+      eyebrow: t.nav.accountPinEyebrow,
+      label: t.nav.accountPinLabel,
+    },
+    storedPlayer: {
+      eyebrow: t.nav.storedPlayerEyebrow,
+      label: t.nav.storedPlayerLabel,
+    },
+  });
 
   useEffect(() => {
     function refreshStoredSession() {
@@ -52,17 +64,17 @@ export default function Header() {
                 <Trophy className="size-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-[0.68rem] font-bold tracking-[0.2em] text-primary uppercase">Quiniela 2026</p>
+                <p className="text-[0.68rem] font-bold tracking-[0.2em] text-primary uppercase">{t.common.appName}</p>
                 <p className="hidden truncate font-display text-sm font-bold tracking-tight text-foreground sm:block sm:text-lg">
-                  La quiniela familiar del Mundial
+                  {t.common.brandLine}
                 </p>
               </div>
             </Link>
 
-            <div className="flex min-w-0 items-stretch gap-1.5 rounded-[1rem] bg-secondary/45 p-1 ring-1 ring-border/60 sm:w-auto sm:min-w-[26rem] sm:p-1.5 sm:items-center sm:justify-end sm:rounded-[1.35rem]">
+            <div className="flex min-w-0 items-stretch gap-1.5 rounded-[1rem] bg-secondary/45 p-1 ring-1 ring-border/60 sm:w-auto sm:min-w-[30rem] sm:p-1.5 sm:items-center sm:justify-end sm:rounded-[1.35rem]">
               {showPrimaryNav ? (
                 <nav className="hidden w-full grid-cols-3 gap-1.5 sm:grid sm:flex-1">
-                  {PRIMARY_NAV_ITEMS.map(({ to, hash, label }) => {
+                  {PRIMARY_NAV_ITEMS.map(({ to, hash, labelKey }) => {
                     return (
                       <Link
                         key={`${to}-${hash ?? "top"}`}
@@ -75,12 +87,13 @@ export default function Header() {
                         }}
                         className="flex min-h-10 items-center justify-center rounded-[0.9rem] px-3 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground sm:min-h-11 sm:rounded-[1rem]"
                       >
-                        {label}
+                        {t.common[labelKey]}
                       </Link>
                     );
                   })}
                 </nav>
               ) : null}
+              <LanguageToggle />
               {accountState === "storedPlayer" && storedSession ? (
                 <UserMenu playerSession={storedSession} onPlayerSessionCleared={() => setStoredSession(null)} />
               ) : (
