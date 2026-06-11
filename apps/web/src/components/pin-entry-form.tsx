@@ -89,7 +89,12 @@ function PinEntryForm({
           ) : null}
         </div>
 
-        <Button className="h-11 rounded-[1rem]" render={<Link to="/manual" />} type="button" variant="outline">
+        <Button
+          className="h-11 rounded-[1rem] border-[#2A398D]/18 bg-[#2A398D]/10 text-[#1f2f78] shadow-[0_12px_24px_-20px_rgba(42,57,141,0.6)] ring-1 ring-[#2A398D]/18 hover:bg-[#2A398D]/14 hover:text-[#1f2f78]"
+          render={<Link to="/manual" />}
+          type="button"
+          variant="outline"
+        >
           {t.pinEntry.learn}
         </Button>
 

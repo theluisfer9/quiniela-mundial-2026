@@ -58,20 +58,20 @@ export default function Header() {
           <div className="flex items-center justify-between gap-2">
             <Link
               to="/"
-              className="flex min-w-0 items-center gap-2 rounded-[1rem] bg-[linear-gradient(135deg,rgba(230,29,37,0.1),rgba(42,57,141,0.07)_48%,rgba(60,172,59,0.1))] px-2.5 py-2 sm:gap-3 sm:rounded-[1.35rem] sm:px-3 sm:py-3"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-[1rem] bg-[linear-gradient(135deg,rgba(230,29,37,0.1),rgba(42,57,141,0.07)_48%,rgba(60,172,59,0.1))] px-2.5 py-2 sm:gap-3 sm:rounded-[1.35rem] sm:px-3 sm:py-3"
             >
               <div className="flex size-9 shrink-0 items-center justify-center rounded-[0.85rem] bg-primary text-primary-foreground shadow-[0_12px_28px_-18px_rgba(230,29,37,0.9)] sm:size-11 sm:rounded-[1rem]">
                 <Trophy className="size-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[0.68rem] font-bold tracking-[0.2em] text-primary uppercase">{t.common.appName}</p>
-                <p className="hidden truncate font-display text-sm font-bold tracking-tight text-foreground sm:block sm:text-lg">
+              <div className="min-w-0 leading-none">
+                <p className="text-[0.66rem] font-bold leading-none tracking-[0.18em] text-primary uppercase sm:text-[0.68rem] sm:tracking-[0.2em]">{t.common.appName}</p>
+                <p className="mt-0.5 hidden truncate font-display text-sm font-bold tracking-tight text-foreground sm:block sm:text-lg">
                   {t.common.brandLine}
                 </p>
               </div>
             </Link>
 
-            <div className="flex min-w-0 items-stretch gap-1.5 rounded-[1rem] bg-secondary/45 p-1 ring-1 ring-border/60 sm:w-auto sm:min-w-[30rem] sm:p-1.5 sm:items-center sm:justify-end sm:rounded-[1.35rem]">
+            <div className="flex shrink-0 items-stretch gap-1 rounded-[1rem] bg-secondary/45 p-1 ring-1 ring-border/60 sm:w-auto sm:min-w-[30rem] sm:gap-1.5 sm:p-1.5 sm:items-center sm:justify-end sm:rounded-[1.35rem]">
               {showPrimaryNav ? (
                 <nav className="hidden w-full grid-cols-3 gap-1.5 sm:grid sm:flex-1">
                   {PRIMARY_NAV_ITEMS.map(({ to, hash, labelKey }) => {

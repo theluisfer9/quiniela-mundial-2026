@@ -63,7 +63,7 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
           <Button
             variant="ghost"
             disabled={isLoggingOut}
-            className="min-h-10 w-auto justify-between rounded-[1rem] border border-[#2A398D]/18 bg-[#2A398D]/10 px-2 py-0 text-[#1f2f78] shadow-[0_12px_24px_-20px_rgba(42,57,141,0.6)] ring-1 ring-[#2A398D]/18 hover:bg-[#2A398D]/14 hover:text-[#1f2f78] aria-expanded:bg-[#2A398D]/14 aria-expanded:text-[#1f2f78] sm:min-h-11 sm:min-w-[10rem] sm:px-3"
+            className="min-h-10 w-auto shrink-0 justify-between rounded-[1rem] border border-[#2A398D]/18 bg-[#2A398D]/10 px-2 py-0 text-[#1f2f78] shadow-[0_12px_24px_-20px_rgba(42,57,141,0.6)] ring-1 ring-[#2A398D]/18 hover:bg-[#2A398D]/14 hover:text-[#1f2f78] aria-expanded:bg-[#2A398D]/14 aria-expanded:text-[#1f2f78] sm:min-h-11 sm:min-w-[10rem] sm:px-3"
           />
         }
       >

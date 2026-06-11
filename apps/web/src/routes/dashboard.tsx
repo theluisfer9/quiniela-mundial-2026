@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import { Award, BarChart3, Flame, Target, Trophy, UsersRound } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { ShareStandingsExport } from "@/components/share-standings-export";
 import {
   formatRankDelta,
   formatStreak,
@@ -24,10 +25,37 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function RouteComponent() {
-  const { dateLocale, t } = useI18n();
+  const { dateLocale, locale, t } = useI18n();
   const analytics = useQuery(api.standings.getPublicDashboardAnalytics, {}) as DashboardAnalyticsData | undefined;
   const matches = useQuery(api.matches.getPublicDashboardMatches, {}) as DashboardSummaryMatchData | undefined;
-  const summaryCards = getDashboardSummaryCards(analytics, matches, {
+  const summaryMatches = matches
+    ? {
+        ...matches,
+        liveMatches: matches.liveMatches.map((match) => ({
+          ...match,
+          homeTeam: {
+            ...match.homeTeam,
+            name: localizeTeamName({ code: match.homeTeam.code, locale, name: match.homeTeam.name }),
+          },
+          awayTeam: {
+            ...match.awayTeam,
+            name: localizeTeamName({ code: match.awayTeam.code, locale, name: match.awayTeam.name }),
+          },
+        })),
+        upcomingMatches: matches.upcomingMatches.map((match) => ({
+          ...match,
+          homeTeam: {
+            ...match.homeTeam,
+            name: localizeTeamName({ code: match.homeTeam.code, locale, name: match.homeTeam.name }),
+          },
+          awayTeam: {
+            ...match.awayTeam,
+            name: localizeTeamName({ code: match.awayTeam.code, locale, name: match.awayTeam.name }),
+          },
+        })),
+      }
+    : undefined;
+  const summaryCards = getDashboardSummaryCards(analytics, summaryMatches, {
     locale: dateLocale,
     labels: {
       leader: t.analytics.leader,
@@ -93,7 +121,12 @@ function RouteComponent() {
         description={t.dashboard.standingsDescription}
         className="border-primary/15 bg-card/98"
       >
-        {hasRows ? <StandingsTable rows={analytics!.rows} /> : <EmptyPanel label={t.dashboard.emptyStandings} />}
+        {hasRows ? (
+          <>
+            <StandingsTable rows={analytics!.rows} />
+            <ShareStandingsExport liveMatches={summaryMatches?.liveMatches ?? []} rows={analytics!.rows} />
+          </>
+        ) : <EmptyPanel label={t.dashboard.emptyStandings} />}
       </AppSection>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)]">

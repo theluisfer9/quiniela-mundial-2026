@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
-import { query, type QueryCtx } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { calculatePredictionPoints, buildStandingsRows } from "./lib/scoring";
 import { normalizeSoccerScore } from "./lib/scores";
 import { getSpanishStageLabel, getSpanishTeamName } from "./lib/teamDisplay";
@@ -47,6 +47,7 @@ const publicMatchSummary = v.object({
 });
 
 const publicDashboardResult = v.object({
+  liveMatches: v.array(publicMatchSummary),
   todayMatches: v.array(publicMatchSummary),
   upcomingMatches: v.array(publicMatchSummary),
   finishedMatches: v.array(publicMatchSummary),
@@ -64,6 +65,12 @@ type FinishedMatch = Doc<"matches"> & {
   awayScore: bigint;
 };
 
+type ScoredMatch = Doc<"matches"> & {
+  status: "live" | "finished";
+  homeScore: bigint;
+  awayScore: bigint;
+};
+
 async function getTeamMap(ctx: QueryCtx, matches: Doc<"matches">[]) {
   const teamIds = new Set<Id<"teams">>();
   for (const match of matches) {
@@ -75,14 +82,23 @@ async function getTeamMap(ctx: QueryCtx, matches: Doc<"matches">[]) {
   return new Map(teams.filter((team): team is NonNullable<typeof team> => team !== null).map((team) => [team._id, team]));
 }
 
-function getUtcDayRange(now: number) {
-  const date = new Date(now);
-  const start = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-  return { start, end: start + 86_400_000 };
+function getGuatemalaDayKey(timestamp: number) {
+  return new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Guatemala",
+    year: "numeric",
+  }).format(new Date(timestamp));
 }
 
 function isFinishedMatch(match: Doc<"matches">): match is FinishedMatch {
   return match.status === "finished" && match.homeScore !== undefined && match.awayScore !== undefined;
+}
+
+function isScoredMatch(match: Doc<"matches">): match is ScoredMatch {
+  return (match.status === "live" || match.status === "finished") &&
+    match.homeScore !== undefined &&
+    match.awayScore !== undefined;
 }
 
 function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, Doc<"teams">>) {
@@ -120,7 +136,7 @@ function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, 
     },
   };
 
-  if (isFinishedMatch(match)) {
+  if (isScoredMatch(match)) {
     summary.homeScore = normalizeSoccerScore(match.homeScore);
     summary.awayScore = normalizeSoccerScore(match.awayScore);
   }
@@ -133,16 +149,16 @@ export const getPublicDashboardMatches = query({
   returns: publicDashboardResult,
   handler: async (ctx) => {
     const now = Date.now();
-    const { start, end } = getUtcDayRange(now);
+    const todayKey = getGuatemalaDayKey(now);
     const allMatches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
     const teamById = await getTeamMap(ctx, allMatches);
     const publicMatches = allMatches.flatMap((match) => {
       const summary = summarizePublicMatch(match, teamById);
       return summary ? [summary] : [];
     });
-    const finishedMatches = allMatches.filter(isFinishedMatch);
+    const scoredMatches = allMatches.filter(isScoredMatch);
     const predictionGroups = await Promise.all(
-      finishedMatches.map((match) =>
+      scoredMatches.map((match) =>
         ctx.db.query("predictions").withIndex("by_match_id", (q) => q.eq("matchId", match._id)).collect(),
       ),
     );
@@ -150,7 +166,7 @@ export const getPublicDashboardMatches = query({
       (profile) => profile.pinHash !== undefined && profile.active === true,
     );
     const activePlayerIds = new Set(activeProfiles.map((profile) => profile._id));
-    const standingsMatches = finishedMatches.map((match) => ({
+    const standingsMatches = scoredMatches.map((match) => ({
       id: match._id,
       homeScore: normalizeSoccerScore(match.homeScore),
       awayScore: normalizeSoccerScore(match.awayScore),
@@ -191,17 +207,64 @@ export const getPublicDashboardMatches = query({
     }
 
     return {
+      liveMatches: publicMatches.filter((match) => match.status === "live"),
       todayMatches: publicMatches.filter(
-        (match) => match.status !== "finished" && match.kickoffAt >= start && match.kickoffAt < end,
+        (match) => match.status !== "finished" && getGuatemalaDayKey(match.kickoffAt) === todayKey,
       ),
-      upcomingMatches: publicMatches.filter((match) => match.status !== "finished" && match.kickoffAt >= end),
+      upcomingMatches: publicMatches.filter(
+        (match) => match.status !== "finished" && getGuatemalaDayKey(match.kickoffAt) > todayKey,
+      ),
       finishedMatches: publicMatches.filter((match) => match.status === "finished"),
       stats: {
         leaderName: standings[0]?.name ?? null,
-        finishedMatchCount: finishedMatches.length,
+        finishedMatchCount: scoredMatches.length,
         totalPredictionCountForFinishedMatches: finishedPredictions.length,
         bestExactScoreCount: Math.max(0, ...exactScoreCounts.values()),
       },
+    };
+  },
+});
+
+export const updateMatchScore = mutation({
+  args: {
+    matchId: v.id("matches"),
+    homeScore: v.number(),
+    awayScore: v.number(),
+    status: v.union(v.literal("live"), v.literal("finished")),
+  },
+  returns: v.object({
+    matchId: v.id("matches"),
+    homeScore: v.number(),
+    awayScore: v.number(),
+    status: v.union(v.literal("live"), v.literal("finished")),
+  }),
+  handler: async (ctx, args) => {
+    if (process.env.ENABLE_MATCH_MANAGEMENT !== "true") {
+      throw new Error("Match management is not enabled");
+    }
+
+    if (!Number.isInteger(args.homeScore) || !Number.isInteger(args.awayScore)) {
+      throw new Error("Score must be an integer");
+    }
+
+    const homeScore = normalizeSoccerScore(BigInt(args.homeScore));
+    const awayScore = normalizeSoccerScore(BigInt(args.awayScore));
+    const match = await ctx.db.get(args.matchId);
+    if (!match) {
+      throw new Error("Match not found");
+    }
+
+    await ctx.db.patch(args.matchId, {
+      homeScore: BigInt(homeScore),
+      awayScore: BigInt(awayScore),
+      status: args.status,
+    });
+
+    return {
+      matchId: args.matchId,
+      homeScore,
+      awayScore,
+      status: args.status,
     };
   },
 });

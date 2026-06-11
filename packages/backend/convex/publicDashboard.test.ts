@@ -179,7 +179,7 @@ describe("public dashboard", () => {
     Date.now = realNow;
   });
 
-  it("allows unauthenticated public dashboard access with UTC grouped matches and safe JSON", async () => {
+  it("allows unauthenticated public dashboard access with Guatemala-day grouped matches and safe JSON", async () => {
     const t = createTest();
     const ids = await seedPublicDashboardData(t);
 
@@ -188,10 +188,12 @@ describe("public dashboard", () => {
     expect(dashboard.todayMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
       ids.todayScheduledId,
       ids.todayLiveId,
-    ]);
-    expect(dashboard.upcomingMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
       ids.tomorrowScheduledId,
     ]);
+    expect(dashboard.liveMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
+      ids.todayLiveId,
+    ]);
+    expect(dashboard.upcomingMatches.map((match: { matchId: string }) => match.matchId)).toEqual([]);
     expect(dashboard.finishedMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
       ids.yesterdayFinishedId,
       ids.secondFinishedId,
@@ -199,8 +201,7 @@ describe("public dashboard", () => {
     expect(dashboard.finishedMatches[0]).toMatchObject({ homeScore: 2, awayScore: 1 });
     expect(dashboard.todayMatches[0]).not.toHaveProperty("homeScore");
     expect(dashboard.todayMatches[0]).not.toHaveProperty("awayScore");
-    expect(dashboard.todayMatches[1]).not.toHaveProperty("homeScore");
-    expect(dashboard.todayMatches[1]).not.toHaveProperty("awayScore");
+    expect(dashboard.todayMatches[1]).toMatchObject({ homeScore: 1, awayScore: 0 });
 
     const json = JSON.stringify(dashboard);
     expect(json).not.toContain("pinHash");
@@ -212,7 +213,7 @@ describe("public dashboard", () => {
     expect(json).not.toContain('"awayScore":4');
   });
 
-  it("counts finished-match public stats only and derives the leader from public standings", async () => {
+  it("counts scored public stats and derives the leader from public standings", async () => {
     const t = createTest();
     await seedPublicDashboardData(t);
 
@@ -220,9 +221,9 @@ describe("public dashboard", () => {
 
     expect(dashboard.stats).toEqual({
       leaderName: "Beto",
-      finishedMatchCount: 2,
-      totalPredictionCountForFinishedMatches: 4,
-      bestExactScoreCount: 2,
+      finishedMatchCount: 3,
+      totalPredictionCountForFinishedMatches: 5,
+      bestExactScoreCount: 3,
     });
   });
 
@@ -233,8 +234,8 @@ describe("public dashboard", () => {
     const standings = await t.query(api.standings.getPublicStandings, {});
 
     expect(standings).toEqual([
-      { rank: 1, name: "Beto", points: 6, rankDelta: 1, isCurrentUser: false },
-      { rank: 2, name: "Ana", points: 3, rankDelta: -1, isCurrentUser: false },
+      { rank: 1, name: "Beto", points: 9, rankDelta: 0, isCurrentUser: false },
+      { rank: 2, name: "Ana", points: 4, rankDelta: 0, isCurrentUser: false },
     ]);
   });
 
@@ -248,15 +249,15 @@ describe("public dashboard", () => {
       expect.objectContaining({
         rank: 1,
         name: "Beto",
-        points: 6,
-        exactScoreCount: 2,
-        outcomeHitCount: 2,
-        predictionCount: 2,
+        points: 9,
+        exactScoreCount: 3,
+        outcomeHitCount: 3,
+        predictionCount: 3,
         precision: 100,
         leaderGap: 0,
-        rankDelta: 1,
-        currentStreak: 2,
-        longestStreak: 2,
+        rankDelta: 0,
+        currentStreak: 3,
+        longestStreak: 3,
         nearMissCount: 0,
         drawPredictionCount: 1,
         contrarianHitCount: 0,
@@ -265,13 +266,13 @@ describe("public dashboard", () => {
       expect.objectContaining({
         rank: 2,
         name: "Ana",
-        points: 3,
+        points: 4,
         exactScoreCount: 1,
         outcomeHitCount: 1,
         predictionCount: 2,
         precision: 50,
-        leaderGap: 3,
-        rankDelta: -1,
+        leaderGap: 5,
+        rankDelta: 0,
         currentStreak: -1,
         longestStreak: 1,
         nearMissCount: 1,

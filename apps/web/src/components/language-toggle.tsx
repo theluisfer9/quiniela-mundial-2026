@@ -9,7 +9,7 @@ export function LanguageToggle() {
   const { locale, setLocale, t } = useI18n();
 
   return (
-    <div className="flex items-center gap-1 rounded-[0.9rem] bg-background/75 p-1 ring-1 ring-border/60" aria-label={t.common.language}>
+    <div className="flex shrink-0 items-center gap-0.5 rounded-[0.9rem] bg-background/75 p-1 ring-1 ring-border/60 sm:gap-1" aria-label={t.common.language}>
       <Languages aria-hidden="true" className="ml-1 hidden size-4 text-muted-foreground sm:block" />
       {locales.map((nextLocale) => (
         <Button
@@ -17,7 +17,7 @@ export function LanguageToggle() {
           type="button"
           variant={locale === nextLocale ? "default" : "ghost"}
           size="sm"
-          className="h-8 min-w-9 rounded-[0.75rem] px-2 text-xs font-bold"
+          className="h-8 min-w-8 rounded-[0.75rem] px-1.5 text-xs font-bold sm:min-w-9 sm:px-2"
           aria-pressed={locale === nextLocale}
           onClick={() => setLocale(nextLocale)}
         >

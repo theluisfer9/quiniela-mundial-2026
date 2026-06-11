@@ -23,6 +23,7 @@ describe("derivePublicDashboardViewModel", () => {
   it("returns loading while either public query is unresolved", () => {
     expect(derivePublicDashboardViewModel({ matches: undefined, standings: [] })).toMatchObject({
       state: "loading",
+      liveMatches: [],
       todayMatches: [],
       upcomingMatches: [],
       finishedMatches: [],
@@ -32,6 +33,7 @@ describe("derivePublicDashboardViewModel", () => {
     expect(
       derivePublicDashboardViewModel({
         matches: {
+          liveMatches: [],
           todayMatches: [],
           upcomingMatches: [],
           finishedMatches: [],
@@ -50,6 +52,7 @@ describe("derivePublicDashboardViewModel", () => {
   it("returns an empty state when the public dashboard has no rows or matches", () => {
     const dashboard = derivePublicDashboardViewModel({
       matches: {
+        liveMatches: [],
         todayMatches: [],
         upcomingMatches: [],
         finishedMatches: [],
@@ -79,6 +82,7 @@ describe("derivePublicDashboardViewModel", () => {
   it("formats public stat labels around the tournament state", () => {
     const dashboard = derivePublicDashboardViewModel({
       matches: {
+        liveMatches: [],
         todayMatches: [match()],
         upcomingMatches: [match({ matchId: "upcoming-1" })],
         finishedMatches: [
@@ -107,6 +111,7 @@ describe("derivePublicDashboardViewModel", () => {
   it("keeps today, upcoming, and historical finished match groups separate", () => {
     const dashboard = derivePublicDashboardViewModel({
       matches: {
+        liveMatches: [match({ matchId: "today-2", status: "live" })],
         todayMatches: [match({ matchId: "today-1" }), match({ matchId: "today-2", status: "live" })],
         upcomingMatches: [match({ matchId: "upcoming-1", kickoffAt: Date.UTC(2026, 5, 16, 18), homeTeam: TEAM_BRA, awayTeam: TEAM_FRA })],
         finishedMatches: [
@@ -130,6 +135,7 @@ describe("derivePublicDashboardViewModel", () => {
 
     expect(dashboard.state).toBe("ready");
     expect(dashboard.todayMatches).toHaveLength(2);
+    expect(dashboard.liveMatches).toHaveLength(1);
     expect(dashboard.upcomingMatches).toHaveLength(1);
     expect(dashboard.finishedMatches).toHaveLength(1);
     expect(dashboard.totalVisibleMatches).toBe(4);
@@ -138,6 +144,7 @@ describe("derivePublicDashboardViewModel", () => {
   it("keeps public standings rows displayed without a current user", () => {
     const dashboard = derivePublicDashboardViewModel({
       matches: {
+        liveMatches: [],
         todayMatches: [],
         upcomingMatches: [],
         finishedMatches: [],

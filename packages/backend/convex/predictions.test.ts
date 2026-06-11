@@ -219,4 +219,31 @@ describe("predictions", () => {
       t.mutation(api.predictions.upsertPrediction, { sessionToken, matchId, homeScore: 1n, awayScore: 0n }),
     ).rejects.toThrow("Not authenticated");
   });
+
+  it("lists public predictions for a live match sorted by player name", async () => {
+    const t = createTest();
+    const ana = await seedPlayer(t, { displayName: "Ana", pin: "A1B2" });
+    const beto = await seedPlayer(t, { displayName: "Beto", pin: "B2C3" });
+    const anaSessionToken = await loginWithPin(t, ana.pin);
+    const betoSessionToken = await loginWithPin(t, beto.pin);
+    const matchId = await seedMatch(t, NOW + 60_000);
+    await t.mutation(api.predictions.upsertPrediction, { sessionToken: betoSessionToken, matchId, homeScore: 0n, awayScore: 2n });
+    await t.mutation(api.predictions.upsertPrediction, { sessionToken: anaSessionToken, matchId, homeScore: 1n, awayScore: 0n });
+    await t.run((ctx) => ctx.db.patch(matchId, { status: "live", homeScore: 1n, awayScore: 0n }));
+
+    await expect(t.query(api.predictions.listPublicMatchPredictions, { matchId })).resolves.toEqual([
+      { playerName: "Ana", homeScore: 1n, awayScore: 0n },
+      { playerName: "Beto", homeScore: 0n, awayScore: 2n },
+    ]);
+  });
+
+  it("does not reveal public predictions for a scheduled match", async () => {
+    const t = createTest();
+    const player = await seedPlayer(t);
+    const sessionToken = await loginWithPin(t, player.pin);
+    const matchId = await seedMatch(t, NOW + 60_000);
+    await t.mutation(api.predictions.upsertPrediction, { sessionToken, matchId, homeScore: 1n, awayScore: 0n });
+
+    await expect(t.query(api.predictions.listPublicMatchPredictions, { matchId })).rejects.toThrow("Match predictions are private until kickoff");
+  });
 });

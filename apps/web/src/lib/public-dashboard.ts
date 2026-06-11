@@ -12,6 +12,7 @@ export type PublicDashboardMatch = {
 };
 
 export type PublicDashboardMatchesData = {
+  liveMatches: PublicDashboardMatch[];
   todayMatches: PublicDashboardMatch[];
   upcomingMatches: PublicDashboardMatch[];
   finishedMatches: PublicDashboardMatch[];
@@ -30,6 +31,7 @@ export type PublicDashboardStatCard = {
 
 export type PublicDashboardViewModel = {
   state: "loading" | "empty" | "ready";
+  liveMatches: PublicDashboardMatch[];
   todayMatches: PublicDashboardMatch[];
   upcomingMatches: PublicDashboardMatch[];
   finishedMatches: PublicDashboardMatch[];
@@ -129,6 +131,7 @@ export function derivePublicDashboardViewModel({
   if (!matches || !standings) {
     return {
       state: "loading",
+      liveMatches: [],
       todayMatches: [],
       upcomingMatches: [],
       finishedMatches: [],
@@ -150,6 +153,7 @@ export function derivePublicDashboardViewModel({
 
   return {
     state: hasDashboardData ? "ready" : "empty",
+    liveMatches: matches.liveMatches,
     todayMatches: matches.todayMatches,
     upcomingMatches: matches.upcomingMatches,
     finishedMatches: matches.finishedMatches,

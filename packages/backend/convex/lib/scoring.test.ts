@@ -14,7 +14,29 @@ describe("calculatePredictionPoints", () => {
     ).toBe(3);
   });
 
-  it("gives 1 point for the correct outcome only", () => {
+  it("gives 2 points for the correct winner plus one exact team score", () => {
+    expect(
+      calculatePredictionPoints({
+        predictedHome: 4,
+        predictedAway: 0,
+        actualHome: 2,
+        actualAway: 0,
+      }),
+    ).toBe(2);
+  });
+
+  it("gives 1 point for one exact team score without the correct winner", () => {
+    expect(
+      calculatePredictionPoints({
+        predictedHome: 4,
+        predictedAway: 1,
+        actualHome: 2,
+        actualAway: 0,
+      }),
+    ).toBe(1);
+  });
+
+  it("gives 1 point for the correct winner only", () => {
     expect(
       calculatePredictionPoints({
         predictedHome: 3,
@@ -25,7 +47,99 @@ describe("calculatePredictionPoints", () => {
     ).toBe(1);
   });
 
-  it("gives 0 points for the wrong outcome", () => {
+  it.each([
+    {
+      label: "keeps 2 points when Mexico wins 4-0 and prediction was 2-0",
+      predictedHome: 2,
+      predictedAway: 0,
+      actualHome: 4,
+      actualAway: 0,
+      expected: 2,
+    },
+    {
+      label: "keeps 1 point when Mexico wins 4-1 and prediction was 2-0",
+      predictedHome: 2,
+      predictedAway: 0,
+      actualHome: 4,
+      actualAway: 1,
+      expected: 1,
+    },
+    {
+      label: "gives 1 point for one exact team score even with wrong winner",
+      predictedHome: 1,
+      predictedAway: 2,
+      actualHome: 0,
+      actualAway: 1,
+      expected: 1,
+    },
+    {
+      label: "gives 1 point when South Africa is predicted to win 1-0 but loses 1-2",
+      predictedHome: 0,
+      predictedAway: 1,
+      actualHome: 2,
+      actualAway: 1,
+      expected: 1,
+    },
+    {
+      label: "gives 1 point for one exact team score even with wrong draw prediction",
+      predictedHome: 1,
+      predictedAway: 1,
+      actualHome: 2,
+      actualAway: 1,
+      expected: 1,
+    },
+    {
+      label: "gives 1 point for correct winner without exact team scores",
+      predictedHome: 3,
+      predictedAway: 1,
+      actualHome: 2,
+      actualAway: 0,
+      expected: 1,
+    },
+    {
+      label: "gives 0 points for wrong winner and no exact team scores",
+      predictedHome: 3,
+      predictedAway: 2,
+      actualHome: 0,
+      actualAway: 1,
+      expected: 0,
+    },
+    {
+      label: "gives 3 points for exact 0-0 draw",
+      predictedHome: 0,
+      predictedAway: 0,
+      actualHome: 0,
+      actualAway: 0,
+      expected: 3,
+    },
+    {
+      label: "gives 1 point for non-exact draw outcome only",
+      predictedHome: 2,
+      predictedAway: 2,
+      actualHome: 1,
+      actualAway: 1,
+      expected: 1,
+    },
+    {
+      label: "gives 1 point when prediction is 2-2 and result is 3-3",
+      predictedHome: 2,
+      predictedAway: 2,
+      actualHome: 3,
+      actualAway: 3,
+      expected: 1,
+    },
+  ])("$label", ({ predictedHome, predictedAway, actualHome, actualAway, expected }) => {
+    expect(
+      calculatePredictionPoints({
+        predictedHome,
+        predictedAway,
+        actualHome,
+        actualAway,
+      }),
+    ).toBe(expected);
+  });
+
+  it("gives 1 point for the wrong outcome with one exact team score", () => {
     expect(
       calculatePredictionPoints({
         predictedHome: 2,
@@ -33,21 +147,21 @@ describe("calculatePredictionPoints", () => {
         actualHome: 0,
         actualAway: 1,
       }),
-    ).toBe(0);
+    ).toBe(1);
   });
 
-  it("gives 1 point for the correct away-win outcome", () => {
+  it("gives 2 points for a correct away win plus one exact team score", () => {
     expect(
       calculatePredictionPoints({
-        predictedHome: 0,
+        predictedHome: 1,
         predictedAway: 2,
         actualHome: 1,
         actualAway: 3,
       }),
-    ).toBe(1);
+    ).toBe(2);
   });
 
-  it("gives 1 point for the correct draw outcome", () => {
+  it("gives 1 point for the correct draw outcome only", () => {
     expect(
       calculatePredictionPoints({
         predictedHome: 2,
@@ -86,21 +200,21 @@ describe("buildStandingsRows", () => {
       {
         rank: 1,
         name: "Beto",
-        points: 4,
+        points: 5,
         rankDelta: 1,
         isCurrentUser: true,
       },
       {
         rank: 2,
         name: "Ana",
-        points: 3,
+        points: 4,
         rankDelta: -1,
         isCurrentUser: false,
       },
       {
         rank: 3,
         name: "Carla",
-        points: 1,
+        points: 2,
         rankDelta: 0,
         isCurrentUser: false,
       },
@@ -126,7 +240,7 @@ describe("buildStandingsRows", () => {
       {
         rank: 1,
         name: "Ana",
-        points: 1,
+        points: 2,
         rankDelta: 0,
         isCurrentUser: false,
       },

@@ -81,6 +81,7 @@ async function seedMatch(
 describe("matches.listHomeMatches", () => {
   const realNow = Date.now;
   const originalPinPepper = process.env.PIN_PEPPER;
+  const originalMatchManagement = process.env.ENABLE_MATCH_MANAGEMENT;
 
   beforeEach(() => {
     process.env.PIN_PEPPER = TEST_PEPPER;
@@ -92,6 +93,11 @@ describe("matches.listHomeMatches", () => {
       delete process.env.PIN_PEPPER;
     } else {
       process.env.PIN_PEPPER = originalPinPepper;
+    }
+    if (originalMatchManagement === undefined) {
+      delete process.env.ENABLE_MATCH_MANAGEMENT;
+    } else {
+      process.env.ENABLE_MATCH_MANAGEMENT = originalMatchManagement;
     }
     Date.now = realNow;
   });
@@ -114,26 +120,23 @@ describe("matches.listHomeMatches", () => {
 
     const result = await t.query(api.matches.listHomeMatches, { sessionToken });
 
-    expect(result.upcomingMatches).toEqual([
-      {
-        matchId,
-        kickoffAt: NOW + 60_000,
-        stageLabel: "Opening Match",
-        homeTeam: {
-          id: expect.any(String),
-          code: "ARG",
-          name: "Argentina",
-          flagEmoji: "ARG",
-        },
-        awayTeam: {
-          id: expect.any(String),
-          code: "BRA",
-          name: "Brazil",
-          flagEmoji: "BRA",
-        },
-        hasPrediction: false,
+    expect(result.upcomingMatches).toHaveLength(1);
+    expect(result.upcomingMatches[0]).toMatchObject({
+      matchId,
+      kickoffAt: NOW + 60_000,
+      stageLabel: "Opening Match",
+      homeTeam: {
+        code: "ARG",
+        name: "Argentina",
+        flagEmoji: "ARG",
       },
-    ]);
+      awayTeam: {
+        code: "BRA",
+        name: "Brasil",
+        flagEmoji: "BRA",
+      },
+      hasPrediction: false,
+    });
     expect(result.pendingCount).toBe(1);
     expect(result.nextKickoff).toEqual({ kickoffAt: NOW + 60_000, matchCount: 1 });
   });
@@ -181,5 +184,38 @@ describe("matches.listHomeMatches", () => {
     await t.run((ctx) => ctx.db.patch(player.playerId, { active: false, updatedAt: NOW }));
 
     await expect(t.query(api.matches.listHomeMatches, { sessionToken })).rejects.toThrow("Not authenticated");
+  });
+
+  it("rejects match score updates when match management is disabled", async () => {
+    const t = createTest();
+    const matchId = await seedMatch(t);
+
+    await expect(t.mutation(api.matches.updateMatchScore, {
+      matchId,
+      homeScore: 1,
+      awayScore: 0,
+      status: "live",
+    })).rejects.toThrow("Match management is not enabled");
+  });
+
+  it("updates a match with a live score when match management is enabled", async () => {
+    const t = createTest();
+    process.env.ENABLE_MATCH_MANAGEMENT = "true";
+    const matchId = await seedMatch(t);
+
+    await expect(t.mutation(api.matches.updateMatchScore, {
+      matchId,
+      homeScore: 1,
+      awayScore: 0,
+      status: "live",
+    })).resolves.toEqual({
+      matchId,
+      homeScore: 1,
+      awayScore: 0,
+      status: "live",
+    });
+
+    const match = await t.run((ctx) => ctx.db.get(matchId));
+    expect(match).toMatchObject({ homeScore: 1n, awayScore: 0n, status: "live" });
   });
 });

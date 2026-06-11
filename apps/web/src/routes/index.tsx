@@ -9,7 +9,9 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { PinEntryForm } from "@/components/pin-entry-form";
+import { ShareStandingsExport } from "@/components/share-standings-export";
 import { translatePinResultMessage, useI18n } from "@/lib/i18n";
+import { paginateLivePredictions, type LivePredictionRow } from "@/lib/live-predictions";
 import { localizeStageLabel, localizeTeamName } from "@/lib/team-i18n";
 import {
   getStoredPlayerSession,
@@ -152,7 +154,16 @@ function HomeComponent() {
       {dashboard.state === "ready" ? (
         <div className="grid gap-6">
           <PublicStats cards={dashboard.statCards} />
-          <PublicStandings rows={dashboard.standings.slice(0, 3)} />
+          <MatchGroup
+            eyebrow={t.home.liveGroupEyebrow}
+            title={t.home.liveGroupTitle}
+            description={t.home.liveGroupDescription}
+            matches={dashboard.liveMatches}
+            emptyLabel={t.home.noLiveMatches}
+            kickoffFormatter={kickoffFormatter}
+            revealPredictions
+          />
+          <PublicStandings liveMatches={dashboard.liveMatches} rows={dashboard.standings} />
           <MatchGroup
             eyebrow={t.home.nextGroupEyebrow}
             title={t.home.nextGroupTitle}
@@ -233,10 +244,11 @@ function PublicDashboardEmpty() {
 }
 
 function PublicStats({ cards }: { cards: PublicDashboardStatCard[] }) {
+  const { t } = useI18n();
   const icons = [Trophy, CheckCircle2, ListOrdered, CalendarDays] as const;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Resumen de la quiniela">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={t.home.summaryAria}>
       {cards.map((card, index) => {
         const Icon = icons[index] ?? Trophy;
 
@@ -261,8 +273,15 @@ function PublicStats({ cards }: { cards: PublicDashboardStatCard[] }) {
   );
 }
 
-function PublicStandings({ rows }: { rows: ReturnType<typeof derivePublicDashboardViewModel>["standings"] }) {
+function PublicStandings({
+  liveMatches,
+  rows,
+}: {
+  liveMatches: PublicDashboardMatch[];
+  rows: ReturnType<typeof derivePublicDashboardViewModel>["standings"];
+}) {
   const { t } = useI18n();
+  const visibleRows = rows.slice(0, 3);
 
   return (
     <AppSection
@@ -276,10 +295,10 @@ function PublicStandings({ rows }: { rows: ReturnType<typeof derivePublicDashboa
       }
       className="border-primary/15 bg-card/98"
     >
-      {rows.length > 0 ? (
+      {visibleRows.length > 0 ? (
         <>
           <div className="grid gap-3 sm:hidden">
-            {rows.map((row) => (
+            {visibleRows.map((row) => (
               <article key={`${row.rank}-${row.name}`} className="flex items-center justify-between gap-3 rounded-[1.15rem] border border-border/70 bg-background/80 px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-[0.7rem] font-bold tracking-[0.16em] text-primary uppercase">#{row.rank}</p>
@@ -300,7 +319,7 @@ function PublicStandings({ rows }: { rows: ReturnType<typeof derivePublicDashboa
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <tr key={`${row.rank}-${row.name}`} className="border-b border-border/60 last:border-b-0">
                   <th scope="row" className="px-4 py-3 text-left font-display text-lg font-bold tracking-[-0.03em] text-foreground">
                     #{row.rank}
@@ -314,6 +333,7 @@ function PublicStandings({ rows }: { rows: ReturnType<typeof derivePublicDashboa
             </tbody>
           </table>
           </div>
+          <ShareStandingsExport liveMatches={liveMatches} rows={rows} />
         </>
       ) : (
         <p className="rounded-[1.25rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">
@@ -335,6 +355,7 @@ function MatchGroup({
   onPreviousPage,
   onNextPage,
   action,
+  revealPredictions = false,
 }: {
   eyebrow: string;
   title: string;
@@ -346,15 +367,33 @@ function MatchGroup({
   onPreviousPage?: () => void;
   onNextPage?: () => void;
   action?: ReactNode;
+  revealPredictions?: boolean;
 }) {
   const { t } = useI18n();
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [predictionsPage, setPredictionsPage] = useState(1);
+  const predictions = useQuery(
+    api.predictions.listPublicMatchPredictions,
+    revealPredictions && selectedMatchId ? { matchId: selectedMatchId as never } : "skip",
+  ) as LivePredictionRow[] | undefined;
+  const selectedMatch = matches.find((match) => match.matchId === selectedMatchId) ?? null;
+
+  useEffect(() => {
+    setPredictionsPage(1);
+  }, [selectedMatchId]);
 
   return (
     <AppSection eyebrow={eyebrow} title={title} description={description} action={action} className="border-primary/15 bg-card/98">
       {matches.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-2">
           {matches.map((match) => (
-            <MatchCard key={match.matchId} match={match} kickoffFormatter={kickoffFormatter} />
+            <MatchCard
+              key={match.matchId}
+              match={match}
+              kickoffFormatter={kickoffFormatter}
+              isSelected={selectedMatchId === match.matchId}
+              onClick={revealPredictions ? () => setSelectedMatchId(match.matchId) : undefined}
+            />
           ))}
         </div>
       ) : (
@@ -389,16 +428,54 @@ function MatchGroup({
           </div>
         </div>
       ) : null}
+      {revealPredictions && selectedMatch ? (
+        <LivePredictionsModal
+          match={selectedMatch}
+          page={predictionsPage}
+          predictions={predictions}
+          onClose={() => setSelectedMatchId(null)}
+          onPageChange={setPredictionsPage}
+        />
+      ) : null}
     </AppSection>
   );
 }
 
-function MatchCard({ kickoffFormatter, match }: { kickoffFormatter: Intl.DateTimeFormat; match: PublicDashboardMatch }) {
+function MatchCard({
+  isSelected = false,
+  kickoffFormatter,
+  match,
+  onClick,
+}: {
+  isSelected?: boolean;
+  kickoffFormatter: Intl.DateTimeFormat;
+  match: PublicDashboardMatch;
+  onClick?: () => void;
+}) {
   const { locale, t } = useI18n();
-  const isFinished = match.status === "finished";
+  const isScored = match.status === "live" || match.status === "finished";
+  const interactive = onClick !== undefined;
 
   return (
-    <article className="min-w-0 rounded-[1.35rem] border border-border/70 bg-background/86 px-4 py-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.42)]">
+    <article
+      className={cn(
+        "min-w-0 rounded-[1.35rem] border border-border/70 bg-background/86 px-4 py-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.42)]",
+        interactive && "cursor-pointer transition hover:border-primary/35 hover:bg-background",
+        isSelected && "border-primary/45 ring-2 ring-primary/14",
+      )}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (!interactive) {
+          return;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[0.72rem] font-bold tracking-[0.2em] text-primary uppercase">{localizeStageLabel(match.stageLabel, locale)}</p>
@@ -410,7 +487,7 @@ function MatchCard({ kickoffFormatter, match }: { kickoffFormatter: Intl.DateTim
         <span
           className={cn(
             "rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase",
-            match.status === "live" && "bg-accent/15 text-accent-foreground",
+            match.status === "live" && "bg-[#18a842] text-white shadow-[0_10px_22px_-14px_rgba(24,168,66,0.95)] ring-2 ring-[#b7f7c7]",
             match.status === "scheduled" && "bg-primary/10 text-primary",
             match.status === "finished" && "bg-emerald-500/10 text-emerald-700",
           )}
@@ -420,17 +497,113 @@ function MatchCard({ kickoffFormatter, match }: { kickoffFormatter: Intl.DateTim
           {match.status === "finished" ? t.home.statusFinished : null}
         </span>
       </div>
+      {interactive ? (
+        <p className="mt-3 text-sm font-semibold text-primary">{t.home.viewLivePredictions}</p>
+      ) : null}
 
       <div className="mt-4 rounded-[1.15rem] border border-border/60 bg-card/65 px-4 py-4">
-        <TeamLine team={match.homeTeam} score={isFinished ? match.homeScore : undefined} />
+        <TeamLine team={match.homeTeam} score={isScored ? match.homeScore : undefined} />
         <div className="my-3 flex items-center justify-center">
           <span className="rounded-full border border-primary/10 bg-primary/5 px-3 py-1 text-[0.72rem] font-bold tracking-[0.18em] text-primary uppercase">
-            vs
+            {t.common.vs}
           </span>
         </div>
-        <TeamLine team={match.awayTeam} score={isFinished ? match.awayScore : undefined} />
+        <TeamLine team={match.awayTeam} score={isScored ? match.awayScore : undefined} />
       </div>
     </article>
+  );
+}
+
+function LivePredictionsModal({
+  match,
+  onClose,
+  onPageChange,
+  page,
+  predictions,
+}: {
+  match: PublicDashboardMatch;
+  onClose: () => void;
+  onPageChange: (page: number) => void;
+  page: number;
+  predictions: LivePredictionRow[] | undefined;
+}) {
+  const { locale, t } = useI18n();
+  const paginated = predictions ? paginateLivePredictions(predictions, { page, pageSize: 8 }) : null;
+  const homeName = localizeTeamName({ code: match.homeTeam.code, locale, name: match.homeTeam.name });
+  const awayName = localizeTeamName({ code: match.awayTeam.code, locale, name: match.awayTeam.name });
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#11172f]/62 px-3 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_28px_80px_-40px_rgba(17,23,47,0.8)]">
+        <div className="flex items-start justify-between gap-4 border-b border-border/70 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-[0.7rem] font-bold tracking-[0.18em] text-primary uppercase">{t.home.statusLive}</p>
+            <h3 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.04em] text-foreground">{t.home.livePredictionsTitle}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {homeName} {match.homeScore ?? "-"}-{match.awayScore ?? "-"} {awayName}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{t.home.livePredictionsDescription}</p>
+          </div>
+          <Button className="h-10 shrink-0 rounded-[0.9rem]" onClick={onClose} type="button" variant="outline">
+            {t.common.close}
+          </Button>
+        </div>
+
+        <div className="max-h-[58vh] overflow-y-auto p-4">
+          {predictions === undefined ? (
+            <p className="rounded-[1rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">{t.home.livePredictionsLoading}</p>
+          ) : predictions.length === 0 ? (
+            <p className="rounded-[1rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">{t.home.livePredictionsEmpty}</p>
+          ) : (
+            <div className="overflow-hidden rounded-[1.1rem] border border-border/70 bg-background/80">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border/70 text-[0.7rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                    <th className="px-4 py-3 text-left font-semibold" scope="col">{t.home.participant}</th>
+                    <th className="px-4 py-3 text-right font-semibold" scope="col">{t.home.prediction}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated!.rows.map((prediction) => (
+                    <tr key={prediction.playerName} className="border-b border-border/60 last:border-b-0">
+                      <td className="px-4 py-3 font-semibold text-foreground">{prediction.playerName}</td>
+                      <td className="px-4 py-3 text-right font-display text-lg font-bold text-foreground">
+                        {String(prediction.homeScore)}-{String(prediction.awayScore)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {paginated && paginated.pageCount > 1 ? (
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-border/70 px-4 py-3">
+            <Button className="h-10 rounded-[1rem]" disabled={!paginated.hasPreviousPage} onClick={() => onPageChange(paginated.page - 1)} type="button" variant="outline">
+              {t.common.previous}
+            </Button>
+            <p className="px-2 text-center text-xs font-semibold text-muted-foreground">
+              {paginated.page} / {paginated.pageCount}
+            </p>
+            <Button className="h-10 rounded-[1rem]" disabled={!paginated.hasNextPage} onClick={() => onPageChange(paginated.page + 1)} type="button" variant="outline">
+              {t.common.next}
+            </Button>
+          </div>
+        ) : null}
+        </div>
+    </div>
   );
 }
 

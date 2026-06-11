@@ -1,3 +1,5 @@
+import type { PublicDashboardMatch } from "./public-dashboard";
+
 export type DashboardAnalyticsRow = {
   rank: number;
   name: string;
@@ -42,10 +44,11 @@ export type DashboardAnalyticsData = {
 };
 
 export type DashboardSummaryMatchData = {
+  liveMatches: PublicDashboardMatch[];
   upcomingMatches: Array<{
     kickoffAt: number;
-    homeTeam: { name: string };
-    awayTeam: { name: string };
+    homeTeam: { code?: string; name: string };
+    awayTeam: { code?: string; name: string };
   }>;
 };
 

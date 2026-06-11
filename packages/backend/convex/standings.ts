@@ -13,8 +13,20 @@ type FinishedMatch = Doc<"matches"> & {
   awayScore: bigint;
 };
 
+type ScoredMatch = Doc<"matches"> & {
+  status: "live" | "finished";
+  homeScore: bigint;
+  awayScore: bigint;
+};
+
 function isFinishedMatch(match: Doc<"matches">): match is FinishedMatch {
   return match.status === "finished" && match.homeScore !== undefined && match.awayScore !== undefined;
+}
+
+function isScoredMatch(match: Doc<"matches">): match is ScoredMatch {
+  return (match.status === "live" || match.status === "finished") &&
+    match.homeScore !== undefined &&
+    match.awayScore !== undefined;
 }
 
 const standingsRow = v.object({
@@ -72,7 +84,7 @@ async function getFinishedStandingsInputs(ctx: QueryCtx, publicOnly: boolean) {
   const profiles = (await ctx.db.query("profiles").collect()).filter((profile) =>
     publicOnly ? profile.pinHash !== undefined && profile.active === true : true,
   );
-  const finishedMatches = (await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect()).filter(isFinishedMatch);
+  const finishedMatches = (await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect()).filter(isScoredMatch);
   const predictionGroups = await Promise.all(
     finishedMatches.map((match) =>
       ctx.db.query("predictions").withIndex("by_match_id", (q) => q.eq("matchId", match._id)).collect(),
@@ -245,7 +257,7 @@ export const getPublicDashboardAnalytics = query({
     );
     const activePlayerIds = new Set(activeProfiles.map((profile) => profile._id));
     const allMatches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
-    const finishedMatches = allMatches.filter(isFinishedMatch);
+    const finishedMatches = allMatches.filter(isScoredMatch);
     const finishedPredictionGroups = await Promise.all(
       finishedMatches.map((match) =>
         ctx.db.query("predictions").withIndex("by_match_id", (q) => q.eq("matchId", match._id)).collect(),
