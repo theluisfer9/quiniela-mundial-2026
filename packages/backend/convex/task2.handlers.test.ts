@@ -134,7 +134,7 @@ describe("Task 2 handlers", () => {
         {
           rank: 2,
           name: "Beto",
-          points: 1,
+          points: 2,
           rankDelta: 0,
           isCurrentUser: false,
         },

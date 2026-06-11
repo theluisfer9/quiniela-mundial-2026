@@ -60,7 +60,14 @@ export function calculatePredictionPoints({
     return 3;
   }
 
-  if (getOutcome(predictedHome, predictedAway) === getOutcome(actualHome, actualAway)) {
+  const hasCorrectOutcome = getOutcome(predictedHome, predictedAway) === getOutcome(actualHome, actualAway);
+  const hasAnyExactTeamScore = predictedHome === actualHome || predictedAway === actualAway;
+
+  if (hasCorrectOutcome && hasAnyExactTeamScore) {
+    return 2;
+  }
+
+  if (hasCorrectOutcome || hasAnyExactTeamScore) {
     return 1;
   }
 

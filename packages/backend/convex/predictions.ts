@@ -12,6 +12,12 @@ const predictionSummary = v.object({
   updatedAt: v.number(),
 });
 
+const publicPredictionSummary = v.object({
+  playerName: v.string(),
+  homeScore: v.int64(),
+  awayScore: v.int64(),
+});
+
 export const upsertPrediction = mutation({
   args: {
     sessionToken: v.string(),
@@ -94,5 +100,47 @@ export const listMyPredictions = query({
       awayScore: prediction.awayScore,
       updatedAt: prediction.updatedAt,
     }));
+  },
+});
+
+export const listPublicMatchPredictions = query({
+  args: { matchId: v.id("matches") },
+  returns: v.array(publicPredictionSummary),
+  handler: async (ctx, args) => {
+    const match = await ctx.db.get(args.matchId);
+    if (!match) {
+      throw new ConvexError("Match not found");
+    }
+
+    if (match.status === "scheduled") {
+      throw new ConvexError("Match predictions are private until kickoff");
+    }
+
+    const predictions = await ctx.db
+      .query("predictions")
+      .withIndex("by_match_id", (q) => q.eq("matchId", args.matchId))
+      .collect();
+    const rows = await Promise.all(
+      predictions.map(async (prediction) => {
+        if (!prediction.playerId) {
+          return null;
+        }
+
+        const profile = await ctx.db.get(prediction.playerId);
+        if (!profile || profile.active !== true || !profile.pinHash) {
+          return null;
+        }
+
+        return {
+          playerName: profile.displayName,
+          homeScore: prediction.homeScore,
+          awayScore: prediction.awayScore,
+        };
+      }),
+    );
+
+    return rows
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .sort((left, right) => left.playerName.localeCompare(right.playerName));
   },
 });

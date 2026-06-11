@@ -31,6 +31,7 @@ describe("getDashboardSummaryCards", () => {
         ],
       },
       {
+        liveMatches: [],
         upcomingMatches: [
           {
             awayTeam: { name: "Sudáfrica" },

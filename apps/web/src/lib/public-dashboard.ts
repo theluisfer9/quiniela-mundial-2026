@@ -12,6 +12,7 @@ export type PublicDashboardMatch = {
 };
 
 export type PublicDashboardMatchesData = {
+  liveMatches: PublicDashboardMatch[];
   todayMatches: PublicDashboardMatch[];
   upcomingMatches: PublicDashboardMatch[];
   finishedMatches: PublicDashboardMatch[];
@@ -30,6 +31,7 @@ export type PublicDashboardStatCard = {
 
 export type PublicDashboardViewModel = {
   state: "loading" | "empty" | "ready";
+  liveMatches: PublicDashboardMatch[];
   todayMatches: PublicDashboardMatch[];
   upcomingMatches: PublicDashboardMatch[];
   finishedMatches: PublicDashboardMatch[];
@@ -51,6 +53,13 @@ export type PublicDashboardMatchPage = {
 type DerivePublicDashboardInput = {
   matches: PublicDashboardMatchesData | undefined;
   standings: HomeStandingsRow[] | undefined;
+  labels?: {
+    leader: string;
+    leaderPoints: string;
+    today: string;
+    finished: string;
+    undefined: string;
+  };
 };
 
 const EMPTY_STATS: PublicDashboardMatchesData["stats"] = {
@@ -62,20 +71,28 @@ const EMPTY_STATS: PublicDashboardMatchesData["stats"] = {
 
 function buildStatCards({
   finishedMatchCount,
+  labels = {
+    leader: "Lider",
+    leaderPoints: "Puntos lider",
+    today: "Hoy",
+    finished: "Cerrados",
+    undefined: "Por definir",
+  },
   standings,
   todayMatchCount,
 }: {
   finishedMatchCount: number;
+  labels?: NonNullable<DerivePublicDashboardInput["labels"]>;
   standings: HomeStandingsRow[];
   todayMatchCount: number;
 }): PublicDashboardStatCard[] {
   const leader = standings[0];
 
   return [
-    { label: "Lider", value: leader && leader.points > 0 ? leader.name : "Por definir" },
-    { label: "Puntos lider", value: leader ? String(leader.points) : "0" },
-    { label: "Hoy", value: String(todayMatchCount) },
-    { label: "Cerrados", value: String(finishedMatchCount) },
+    { label: labels.leader, value: leader && leader.points > 0 ? leader.name : labels.undefined },
+    { label: labels.leaderPoints, value: leader ? String(leader.points) : "0" },
+    { label: labels.today, value: String(todayMatchCount) },
+    { label: labels.finished, value: String(finishedMatchCount) },
   ];
 }
 
@@ -107,18 +124,21 @@ export function paginatePublicDashboardMatches(
 }
 
 export function derivePublicDashboardViewModel({
+  labels,
   matches,
   standings,
 }: DerivePublicDashboardInput): PublicDashboardViewModel {
   if (!matches || !standings) {
     return {
       state: "loading",
+      liveMatches: [],
       todayMatches: [],
       upcomingMatches: [],
       finishedMatches: [],
       standings: [],
       statCards: buildStatCards({
         finishedMatchCount: EMPTY_STATS.finishedMatchCount,
+        labels,
         standings: [],
         todayMatchCount: 0,
       }),
@@ -133,12 +153,14 @@ export function derivePublicDashboardViewModel({
 
   return {
     state: hasDashboardData ? "ready" : "empty",
+    liveMatches: matches.liveMatches,
     todayMatches: matches.todayMatches,
     upcomingMatches: matches.upcomingMatches,
     finishedMatches: matches.finishedMatches,
     standings: publicStandings,
     statCards: buildStatCards({
       finishedMatchCount: matches.stats.finishedMatchCount,
+      labels,
       standings: publicStandings,
       todayMatchCount: matches.todayMatches.length,
     }),

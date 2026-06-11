@@ -12,6 +12,7 @@ import { PinEntryForm } from "@/components/pin-entry-form";
 import { PredictionCard, type PredictionDraftState } from "@/components/predictions/prediction-card";
 import { PredictionProgress } from "@/components/predictions/prediction-progress";
 import type { HomeMatchSummary } from "@/lib/home-data";
+import { translatePinResultMessage, useI18n } from "@/lib/i18n";
 import {
   clearPlayerSession,
   getStoredPlayerSession,
@@ -47,14 +48,12 @@ type PrivateDataState =
   | { state: "ready"; matches: MatchesResult; predictions: PredictionResult[] }
   | { state: "error"; message: string };
 
-const SESSION_EXPIRED_MESSAGE = "Vuelve a entrar con tu PIN para seguir cargando marcadores.";
-const LOAD_ERROR_MESSAGE = "No pudimos cargar tus partidos. Revisa tu conexion e intenta de nuevo.";
-
 function isNotAuthenticatedError(error: unknown) {
   return error instanceof Error && error.message.includes("Not authenticated");
 }
 
 function PredictionsRoute() {
+  const { t } = useI18n();
   const { match } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const convex = useConvex();
@@ -112,7 +111,7 @@ function PredictionsRoute() {
         }
 
         setCurrentPlayer(undefined);
-        setValidationError("No pudimos validar tu PIN guardado. Revisa tu conexion e intenta de nuevo.");
+        setValidationError(t.errors.validateStoredPin);
       });
 
     return () => {
@@ -127,7 +126,7 @@ function PredictionsRoute() {
 
     clearPlayerSession();
     setStoredSession(null);
-    setPinError(SESSION_EXPIRED_MESSAGE);
+    setPinError(t.errors.sessionExpired);
   }, [accessState.state]);
 
   useEffect(() => {
@@ -158,7 +157,7 @@ function PredictionsRoute() {
           return;
         }
 
-        setPrivateData({ state: "error", message: LOAD_ERROR_MESSAGE });
+        setPrivateData({ state: "error", message: t.errors.loadMatches });
       });
 
     return () => {
@@ -198,7 +197,7 @@ function PredictionsRoute() {
     const key = String(upcomingMatch.matchId);
     return !predictionByMatchId.has(key) && now < upcomingMatch.kickoffAt;
   }).length;
-  function clearSessionForPinEntry(message = SESSION_EXPIRED_MESSAGE) {
+  function clearSessionForPinEntry(message = t.errors.sessionExpired) {
     clearPlayerSession();
     setStoredSession(null);
     setCurrentPlayer(undefined);
@@ -232,10 +231,10 @@ function PredictionsRoute() {
       }
 
       if (result.status === "invalid_pin" || result.status === "locked") {
-        setPinError(result.message);
+        setPinError(translatePinResultMessage(result.message, t));
       }
     } catch {
-      setPinError("No pudimos validar tu PIN. Intenta de nuevo.");
+      setPinError(t.errors.validatePin);
     } finally {
       setIsSubmittingPin(false);
     }
@@ -245,7 +244,7 @@ function PredictionsRoute() {
     return (
       <PredictionsRetryState
         message={validationError}
-        title="No pudimos validar tu acceso"
+        title={t.predictions.validationTitle}
         onRetry={() => {
           setValidationError(null);
           setValidationAttempt((attempt) => attempt + 1);
@@ -261,23 +260,23 @@ function PredictionsRoute() {
   if (accessState.state === "needsPin" || accessState.state === "invalidSession") {
     return (
       <AppSection
-        eyebrow="Mis partidos"
-        title="Ingresa tu PIN para cargar marcadores"
-        description="Entra como tu jugador para ver qué partidos tienes pendientes."
+        eyebrow={t.predictions.sectionEyebrow}
+        title={t.predictions.pinTitle}
+        description={t.predictions.pinDescription}
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(0,24rem)_auto] lg:items-start">
           <PinEntryForm
-            title="Acceso de jugador"
-            description="Usa tu PIN para abrir tus partidos y guardar marcadores."
+            title={t.predictions.pinCardTitle}
+            description={t.predictions.pinCardDescription}
             headingLevel="h2"
             isSubmitting={isSubmittingPin}
             error={pinError}
-            submitLabel="Cargar marcadores"
+            submitLabel={t.predictions.pinSubmit}
             onSubmit={handlePinSubmit}
           />
           <div className="flex flex-wrap gap-3">
             <Button render={<a href="/" />} variant="outline">
-              Volver al inicio
+              {t.common.backHome}
             </Button>
           </div>
         </div>
@@ -289,7 +288,7 @@ function PredictionsRoute() {
     return (
       <PredictionsRetryState
         message={privateData.message}
-        title="No pudimos cargar tus partidos"
+        title={t.predictions.loadErrorTitle}
         onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
       />
     );
@@ -302,16 +301,16 @@ function PredictionsRoute() {
   if (!focusedMatch) {
     return (
       <AppSection
-        eyebrow="Mis partidos"
-        title="No hay partidos abiertos"
-        description="Cuando publiquemos el siguiente bloque, podrás cargar marcadores desde aquí."
+        eyebrow={t.predictions.sectionEyebrow}
+        title={t.predictions.emptyTitle}
+        description={t.predictions.emptyDescription}
       >
         <div className="space-y-3 text-sm leading-6 text-muted-foreground">
-          <p>Cuando haya partidos disponibles, aquí aparecerán para que pongas tus marcadores.</p>
+          <p>{t.predictions.emptyBody}</p>
           <div className="flex flex-wrap gap-3">
-            <Button render={<a href="/" />}>Volver al inicio</Button>
+            <Button render={<a href="/" />}>{t.common.backHome}</Button>
             <Button render={<a href="/" />} variant="outline">
-              Ver la tabla
+              {t.predictions.viewStandings}
             </Button>
           </div>
         </div>
@@ -388,7 +387,7 @@ function PredictionsRoute() {
         ...current,
         [focusedMatchId]: "saved",
       }));
-      toast.success("Marcador guardado", {
+      toast.success(t.predictions.scoreSavedToast, {
         description: `${focusedMatch.homeTeam.name} ${scores.homeScore} - ${scores.awayScore} ${focusedMatch.awayTeam.name}`,
       });
     } catch (error) {
@@ -406,8 +405,8 @@ function PredictionsRoute() {
         ...current,
         [focusedMatchId]: nextState,
       }));
-      toast.error(nextState === "locked" ? "Este partido ya cerró" : "No se pudo guardar", {
-        description: nextState === "locked" ? "El marcador quedó en modo lectura." : "Intenta guardar de nuevo.",
+      toast.error(nextState === "locked" ? t.predictions.matchLockedToast : t.predictions.saveErrorToast, {
+        description: nextState === "locked" ? t.predictions.lockedDescription : t.predictions.saveAgainDescription,
       });
     } finally {
       if (inFlightSaveByMatchIdRef.current[focusedMatchId] === requestId) {
@@ -418,14 +417,14 @@ function PredictionsRoute() {
 
   return (
     <AppSection
-      eyebrow="Mis partidos"
-      title="Carga tus marcadores"
-      description="El flujo es simple: revisa el partido, escribe los dos goles y sigue al siguiente."
+      eyebrow={t.predictions.sectionEyebrow}
+      title={t.predictions.mainTitle}
+      description={t.predictions.mainDescription}
       className="px-3 py-3 sm:px-6 sm:py-6"
       contentClassName="space-y-3 sm:space-y-4"
       action={
         <Button className="rounded-[1rem]" render={<a href="/" />} variant="outline">
-          Volver al inicio
+          {t.common.backHome}
         </Button>
       }
     >
@@ -433,15 +432,15 @@ function PredictionsRoute() {
         <div className="hidden gap-3 rounded-[1.5rem] border border-[#2A398D]/15 bg-[#2A398D]/6 p-4 text-sm text-[#1f2f78] sm:grid sm:grid-cols-3 sm:p-5">
           <div className="flex items-start gap-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">1</span>
-            <p><span className="font-bold">Revisa el partido.</span> Confirma equipos y hora de cierre.</p>
+            <p><span className="font-bold">{t.predictions.step1Title}</span> {t.predictions.step1Body}</p>
           </div>
           <div className="flex items-start gap-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">2</span>
-            <p><span className="font-bold">Pon los goles.</span> Llena local y visita.</p>
+            <p><span className="font-bold">{t.predictions.step2Title}</span> {t.predictions.step2Body}</p>
           </div>
           <div className="flex items-start gap-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">3</span>
-            <p><span className="font-bold">Guarda.</span> Presiona Guardar marcador y luego sigue al siguiente partido.</p>
+            <p><span className="font-bold">{t.predictions.step3Title}</span> {t.predictions.step3Body}</p>
           </div>
         </div>
         <PredictionCard
@@ -482,7 +481,7 @@ function PredictionsRoute() {
         match={focusedMatch}
         sameDateMatchCount={getSameDateMatchCount(upcomingMatches, focusedMatch)}
         scores={focusedDraftState?.scores ?? null}
-        statusLabel={focusedDraftState?.displayState === "saved" && focusedDraftState.draftMatchesSavedScore ? "Guardado" : undefined}
+        statusLabel={focusedDraftState?.displayState === "saved" && focusedDraftState.draftMatchesSavedScore ? t.common.saved : undefined}
         onNext={() => moveToMatch(focusedMatchIndex + 1)}
         onPrevious={() => moveToMatch(focusedMatchIndex - 1)}
         onSave={(scores) => void handleSave(scores)}
@@ -516,18 +515,23 @@ function MobilePredictionWizardNav({
   onNext: () => void;
   onSave: (scores: { homeScore: number; awayScore: number }) => void;
 }) {
+  const { dateLocale, t } = useI18n();
+  const shortDateFormatter = new Intl.DateTimeFormat(dateLocale, {
+    day: "numeric",
+    month: "short",
+  });
   const dateLabel = shortDateFormatter.format(match.kickoffAt);
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 px-3 pb-[max(1.1rem,calc(0.85rem+env(safe-area-inset-bottom)))] pt-3 shadow-[0_-18px_45px_-34px_rgba(42,57,141,0.65)] backdrop-blur sm:hidden">
       <div className="mx-auto grid max-w-md gap-2">
         <div className="flex items-center justify-between gap-3 px-1 text-xs font-semibold text-muted-foreground">
-          <span>{`Fecha ${dateLabel}`}</span>
-          <span>{`${sameDateMatchCount} partidos`}</span>
+          <span>{t.predictions.mobileDate(dateLabel)}</span>
+          <span>{t.predictions.matchCount(sameDateMatchCount)}</span>
         </div>
         <div className="grid grid-cols-[0.8fr_1.4fr_0.8fr] gap-2">
           <Button className="h-12 rounded-[1rem]" disabled={!hasPrevious || isSaving} onClick={onPrevious} type="button" variant="outline">
-            Anterior
+            {t.common.previous}
           </Button>
           <Button
             className="h-12 rounded-[1rem] text-sm font-bold"
@@ -539,10 +543,10 @@ function MobilePredictionWizardNav({
             }}
             type="button"
           >
-            {isSaving ? "Guardando..." : statusLabel ?? "Guardar"}
+            {isSaving ? t.common.saving : statusLabel ?? t.common.save}
           </Button>
           <Button className="h-12 rounded-[1rem]" disabled={!hasNext || isSaving} onClick={onNext} type="button" variant="outline">
-            Siguiente
+            {t.common.next}
           </Button>
         </div>
       </div>
@@ -550,17 +554,14 @@ function MobilePredictionWizardNav({
   );
 }
 
-const shortDateFormatter = new Intl.DateTimeFormat("es-MX", {
-  day: "numeric",
-  month: "short",
-});
-
 function PredictionsLoadingState() {
+  const { t } = useI18n();
+
   return (
     <AppSection
-      eyebrow="Mis partidos"
-      title="Cargando partidos"
-      description="Estamos preparando tus próximos cierres y marcadores guardados."
+      eyebrow={t.predictions.sectionEyebrow}
+      title={t.predictions.loadingTitle}
+      description={t.predictions.loadingDescription}
     >
       <div className="space-y-4">
         <Skeleton className="h-28 rounded-[2rem]" />
@@ -579,14 +580,16 @@ function PredictionsRetryState({
   message: string;
   onRetry: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
-    <AppSection eyebrow="Mis partidos" title={title} description={message}>
+    <AppSection eyebrow={t.predictions.sectionEyebrow} title={title} description={message}>
       <div className="flex flex-wrap gap-3">
         <Button type="button" onClick={onRetry}>
-          Intentar de nuevo
+          {t.common.retry}
         </Button>
         <Button render={<a href="/" />} variant="outline">
-          Volver al inicio
+          {t.common.backHome}
         </Button>
       </div>
     </AppSection>

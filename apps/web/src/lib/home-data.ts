@@ -99,16 +99,23 @@ export function deriveHomeViewModel({ currentUser, standings, matches }: DeriveH
   };
 }
 
-export function buildPredictionEntry(match?: HomeMatchSummary): PredictionEntry {
+export function buildPredictionEntry(
+  match?: HomeMatchSummary,
+  labels = {
+    default: "Ir a pronosticos",
+    continue: "Continuar pronostico",
+    start: "Empezar pronostico",
+  },
+): PredictionEntry {
   if (!match) {
     return {
       href: "/pronosticos",
-      label: "Ir a pronosticos",
+      label: labels.default,
     };
   }
 
   return {
     href: `/pronosticos?match=${match.matchId}`,
-    label: match.hasPrediction ? "Continuar pronostico" : "Empezar pronostico",
+    label: match.hasPrediction ? labels.continue : labels.start,
   };
 }

@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, KeyRound } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
 
+import { useI18n } from "@/lib/i18n";
 import { isPinEntrySubmittable, normalizePlayerPin } from "@/lib/pin-entry";
 
 type PinEntryFormProps = {
@@ -22,14 +23,15 @@ function formatPinInput(pin: string) {
 }
 
 function PinEntryForm({
-  title = "Ingresa tu PIN",
-  description = "Escribe el codigo de 4 caracteres que te compartieron para cargar tus marcadores.",
+  title,
+  description,
   headingLevel = "h2",
   isSubmitting = false,
   error = null,
-  submitLabel = "Entrar a mis partidos",
+  submitLabel,
   onSubmit,
 }: PinEntryFormProps) {
+  const { t } = useI18n();
   const [pin, setPin] = useState("");
   const inputId = useId();
   const errorId = useId();
@@ -53,11 +55,11 @@ function PinEntryForm({
         <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_16px_34px_-20px_rgba(230,29,37,0.9)]">
           <KeyRound aria-hidden="true" className="size-5" />
         </div>
-        <p className="text-[0.7rem] font-bold tracking-[0.22em] text-primary uppercase">Acceso con PIN</p>
+        <p className="text-[0.7rem] font-bold tracking-[0.22em] text-primary uppercase">{t.pinEntry.eyebrow}</p>
         <Heading className="text-balance font-display text-3xl font-extrabold leading-none tracking-[-0.04em] text-foreground">
-          {title}
+          {title ?? t.pinEntry.defaultTitle}
         </Heading>
-        <p className="max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+        <p className="max-w-sm text-sm leading-6 text-muted-foreground">{description ?? t.pinEntry.defaultDescription}</p>
       </div>
 
       <form
@@ -65,7 +67,7 @@ function PinEntryForm({
         className="flex flex-col gap-4 rounded-[1.35rem] border border-border/60 bg-background/70 p-4 sm:p-5"
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor={inputId} className="text-foreground">PIN</Label>
+          <Label htmlFor={inputId} className="text-foreground">{t.common.pin}</Label>
           <Input
             id={inputId}
             name="pin"
@@ -87,8 +89,13 @@ function PinEntryForm({
           ) : null}
         </div>
 
-        <Button className="h-11 rounded-[1rem]" render={<Link to="/manual" />} type="button" variant="outline">
-          Aprende a jugar
+        <Button
+          className="h-11 rounded-[1rem] border-[#2A398D]/18 bg-[#2A398D]/10 text-[#1f2f78] shadow-[0_12px_24px_-20px_rgba(42,57,141,0.6)] ring-1 ring-[#2A398D]/18 hover:bg-[#2A398D]/14 hover:text-[#1f2f78]"
+          render={<Link to="/manual" />}
+          type="button"
+          variant="outline"
+        >
+          {t.pinEntry.learn}
         </Button>
 
         <Button
@@ -96,7 +103,7 @@ function PinEntryForm({
           className="h-12 w-full rounded-[1rem] border-b-4 border-[#93000e] bg-primary text-sm font-bold shadow-[0_10px_22px_rgba(189,0,21,0.24)]"
           disabled={!canSubmit}
         >
-          {isSubmitting ? "Entrando…" : submitLabel}
+          {isSubmitting ? t.pinEntry.submitting : submitLabel ?? t.pinEntry.defaultSubmit}
           <ArrowRight aria-hidden="true" className="size-4" />
         </Button>
       </form>
