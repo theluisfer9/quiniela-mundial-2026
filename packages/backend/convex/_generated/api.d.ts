@@ -26,6 +26,7 @@ import type * as players from "../players.js";
 import type * as predictions from "../predictions.js";
 import type * as privateData from "../privateData.js";
 import type * as profiles from "../profiles.js";
+import type * as scoreOperators from "../scoreOperators.js";
 import type * as seed from "../seed.js";
 import type * as standings from "../standings.js";
 
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   predictions: typeof predictions;
   privateData: typeof privateData;
   profiles: typeof profiles;
+  scoreOperators: typeof scoreOperators;
   seed: typeof seed;
   standings: typeof standings;
 }>;
