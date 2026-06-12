@@ -32,6 +32,7 @@ describe("getDashboardSummaryCards", () => {
       },
       {
         liveMatches: [],
+        todayMatches: [],
         upcomingMatches: [
           {
             awayTeam: { name: "Sudáfrica" },
@@ -46,7 +47,41 @@ describe("getDashboardSummaryCards", () => {
       { label: "Lider", value: "Por definir", detail: "Sin partidos cerrados" },
       { label: "Mas exactos", value: "Por definir", detail: "0 marcadores" },
       { label: "Mejor racha", value: "Por definir", detail: "0 aciertos seguidos" },
-      { label: "Proximo cierre", value: "11 jun, 7:00 p.m.", detail: "México vs Sudáfrica" },
+      { label: "Proximo cierre", value: "11 jun, 1:00 p.m.", detail: "México vs Sudáfrica" },
     ]);
+  });
+
+  it("uses the next scheduled match from today before later upcoming matches", () => {
+    const cards = getDashboardSummaryCards(
+      {
+        awardCards: [],
+        consensusMatches: [],
+        rows: [],
+      },
+      {
+        liveMatches: [],
+        todayMatches: [
+          {
+            awayTeam: { name: "Paraguay" },
+            homeTeam: { name: "Estados Unidos" },
+            kickoffAt: Date.UTC(2026, 5, 13, 1),
+          },
+        ],
+        upcomingMatches: [
+          {
+            awayTeam: { name: "Suiza" },
+            homeTeam: { name: "Catar" },
+            kickoffAt: Date.UTC(2026, 5, 13, 19),
+          },
+        ],
+      },
+      { locale: "es-GT" },
+    );
+
+    expect(cards[3]).toEqual({
+      label: "Proximo cierre",
+      value: "12 jun, 7:00 p. m.",
+      detail: "Estados Unidos vs Paraguay",
+    });
   });
 });

@@ -72,10 +72,10 @@ describe("derivePublicDashboardViewModel", () => {
       standings: [],
     });
     expect(dashboard.statCards).toEqual([
-      { label: "Lider", value: "Por definir" },
-      { label: "Puntos lider", value: "0" },
-      { label: "Hoy", value: "0" },
-      { label: "Cerrados", value: "0" },
+      { label: "Lider", value: "Por definir", detail: "Entra con tu PIN" },
+      { label: "Mi posicion", value: "#-", detail: "Entra con tu PIN" },
+      { label: "Aciertos perfectos", value: "0", detail: "Marcadores exactos" },
+      { label: "Racha", value: "0", detail: "Sin racha activa" },
     ]);
   });
 
@@ -104,6 +104,7 @@ describe("derivePublicDashboardViewModel", () => {
 
   it("formats public stat labels around the tournament state", () => {
     const dashboard = derivePublicDashboardViewModel({
+      currentPlayerName: "Ana",
       matches: {
         liveMatches: [],
         todayMatches: [match()],
@@ -120,15 +121,39 @@ describe("derivePublicDashboardViewModel", () => {
           bestExactScoreCount: 4,
         },
       },
+      playerMetrics: [
+        { name: "Ana", exactScoreCount: 3, currentStreak: 2 },
+      ],
       standings: [{ rank: 1, name: "Ana", points: 12, rankDelta: 0, isCurrentUser: false }],
     });
 
     expect(dashboard.statCards).toEqual([
-      { label: "Lider", value: "Ana" },
-      { label: "Puntos lider", value: "12" },
-      { label: "Hoy", value: "1" },
-      { label: "Cerrados", value: "3" },
+      { label: "Lider", value: "Ana", detail: "🏆 12 pts" },
+      { label: "Mi posicion", value: "#1", detail: "Estas en la punta" },
+      { label: "Aciertos perfectos", value: "3", detail: "Marcadores exactos" },
+      { label: "Racha", value: "🔥 2", detail: "Aciertos consecutivos" },
     ]);
+  });
+
+  it("uses scored match stats for the closed hero metric instead of historical matches only", () => {
+    const dashboard = derivePublicDashboardViewModel({
+      matches: {
+        liveMatches: [match({ matchId: "live-1", status: "live" })],
+        todayMatches: [match({ matchId: "live-1", status: "live" })],
+        upcomingMatches: [],
+        finishedMatches: [match({ matchId: "finished-1", status: "finished" })],
+        stats: {
+          leaderName: "Ana",
+          finishedMatchCount: 2,
+          totalPredictionCountForFinishedMatches: 48,
+          bestExactScoreCount: 3,
+        },
+      },
+      standings: [{ rank: 1, name: "Ana", points: 7, rankDelta: 0, isCurrentUser: false }],
+    });
+
+    expect(dashboard.heroMetrics.finishedMatchCount).toBe(2);
+    expect(dashboard.finishedMatches).toHaveLength(1);
   });
 
   it("keeps today, upcoming, and historical finished match groups separate", () => {

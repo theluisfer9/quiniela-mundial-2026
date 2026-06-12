@@ -4,7 +4,7 @@ import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { CalendarDays, CheckCircle2, Clock, ListOrdered, Trophy } from "lucide-react";
+import { CalendarDays, Clock, Flame, ListOrdered, Target, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -37,6 +37,7 @@ function HomeComponent() {
   const navigate = useNavigate({ from: Route.fullPath });
   const publicMatches = useQuery(api.matches.getPublicDashboardMatches, {});
   const standings = useQuery(api.standings.getPublicStandings, {});
+  const publicAnalytics = useQuery(api.standings.getPublicDashboardAnalytics, {});
   const loginWithPin = useMutation(api.players.loginWithPin);
   const [pinError, setPinError] = useState<string | null>(null);
   const [isSubmittingPin, setIsSubmittingPin] = useState(false);
@@ -44,12 +45,21 @@ function HomeComponent() {
   const dashboard = derivePublicDashboardViewModel({
     labels: {
       leader: t.home.statLeader,
-      leaderPoints: t.home.statLeaderPoints,
-      today: t.home.today,
-      finished: t.home.finished,
+      myPosition: t.home.statMyPosition,
+      perfectHits: t.home.statPerfectHits,
+      streak: t.home.statStreak,
       undefined: t.common.undefined,
+      enterWithPin: t.home.statEnterWithPin,
+      exactScores: t.home.statExactScores,
+      consecutiveHits: t.home.statConsecutiveHits,
+      noStreak: t.home.statNoStreak,
+      inLead: t.home.statInLead,
+      leaderPoints: t.home.statLeaderPointsDetail,
+      leaderGap: t.home.statLeaderGap,
     },
+    currentPlayerName: storedSession?.displayName,
     matches: publicMatches,
+    playerMetrics: publicAnalytics?.rows,
     standings,
   });
   const kickoffFormatter = new Intl.DateTimeFormat(dateLocale, {
@@ -130,7 +140,7 @@ function HomeComponent() {
             <div className="grid gap-3 sm:grid-cols-3">
               <HeroMetric label={t.home.today} value={String(dashboard.todayMatches.length)} />
               <HeroMetric label={t.home.upcoming} value={String(dashboard.upcomingMatches.length)} />
-              <HeroMetric label={t.home.finished} value={String(dashboard.finishedMatches.length)} />
+              <HeroMetric label={t.home.finished} value={String(dashboard.heroMetrics.finishedMatchCount)} />
             </div>
           </div>
 
@@ -245,7 +255,7 @@ function PublicDashboardEmpty() {
 
 function PublicStats({ cards }: { cards: PublicDashboardStatCard[] }) {
   const { t } = useI18n();
-  const icons = [Trophy, CheckCircle2, ListOrdered, CalendarDays] as const;
+  const icons = [Trophy, ListOrdered, Target, Flame] as const;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={t.home.summaryAria}>
@@ -266,6 +276,7 @@ function PublicStats({ cards }: { cards: PublicDashboardStatCard[] }) {
             <p className="mt-4 truncate font-display text-3xl font-extrabold tracking-[-0.04em] text-foreground">
               {card.value}
             </p>
+            <p className="mt-1 text-sm font-semibold text-muted-foreground">{card.detail}</p>
           </article>
         );
       })}

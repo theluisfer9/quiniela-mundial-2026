@@ -45,19 +45,29 @@ export type DashboardAnalyticsData = {
 
 export type DashboardSummaryMatchData = {
   liveMatches: PublicDashboardMatch[];
+  todayMatches?: Array<{
+    kickoffAt: number;
+    status?: "scheduled" | "live" | "finished";
+    homeTeam: { code?: string; name: string };
+    awayTeam: { code?: string; name: string };
+  }>;
   upcomingMatches: Array<{
     kickoffAt: number;
+    status?: "scheduled" | "live" | "finished";
     homeTeam: { code?: string; name: string };
     awayTeam: { code?: string; name: string };
   }>;
 };
 
+type DashboardSummaryMatch = NonNullable<DashboardSummaryMatchData["todayMatches"]>[number];
+
 function createNextKickoffFormatter(locale = "es-MX") {
   return new Intl.DateTimeFormat(locale, {
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "America/Guatemala",
   });
 }
 
@@ -94,7 +104,7 @@ export function getDashboardSummaryCards(
   };
   const nextKickoffFormatter = createNextKickoffFormatter(options.locale);
   const leader = data?.rows.find((row) => row.points > 0) ?? null;
-  const nextMatch = matches?.upcomingMatches[0] ?? null;
+  const nextMatch = getNextScheduledMatch(matches);
   const bestExact = data?.rows.reduce<DashboardAnalyticsRow | null>((current, row) => {
     if (!current || row.exactScoreCount > current.exactScoreCount) {
       return row;
@@ -116,10 +126,20 @@ export function getDashboardSummaryCards(
     { label: labels.bestStreak, value: hasBestStreak ? bestStreak!.name : labels.undefined, detail: labels.consecutiveHits(bestStreak?.longestStreak ?? 0) },
     {
       label: labels.nextDeadline,
-      value: nextMatch ? nextKickoffFormatter.format(nextMatch.kickoffAt) : labels.undefined,
+      value: nextMatch ? nextKickoffFormatter.format(nextMatch.kickoffAt).replace(/\s/g, " ") : labels.undefined,
       detail: nextMatch ? `${nextMatch.homeTeam.name} vs ${nextMatch.awayTeam.name}` : labels.noScheduledMatches,
     },
   ];
+}
+
+function getNextScheduledMatch(matches?: DashboardSummaryMatchData): DashboardSummaryMatch | null {
+  if (!matches) {
+    return null;
+  }
+
+  return [...(matches.todayMatches ?? []), ...matches.upcomingMatches]
+    .filter((match) => match.status === undefined || match.status === "scheduled")
+    .sort((left, right) => left.kickoffAt - right.kickoffAt)[0] ?? null;
 }
 
 export function formatRankDelta(
