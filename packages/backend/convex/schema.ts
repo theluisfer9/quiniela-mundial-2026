@@ -53,7 +53,9 @@ export default defineSchema({
     homeScore: v.optional(persistedScore),
     awayScore: v.optional(persistedScore),
     status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
-  }).index("by_kickoff_at", ["kickoffAt"]),
+  })
+    .index("by_kickoff_at", ["kickoffAt"])
+    .index("by_status_kickoff_at", ["status", "kickoffAt"]),
 
   predictions: defineTable({
     userId: v.optional(v.string()),

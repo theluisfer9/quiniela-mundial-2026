@@ -22,10 +22,13 @@ import {
 import type { PredictionSaveState } from "@/lib/prediction-copy";
 import { getPredictionsAccessState } from "@/lib/predictions-access";
 
+type PredictionsTab = "por-venir" | "historico";
+
 export const Route = createFileRoute("/pronosticos")({
   component: PredictionsRoute,
   validateSearch: (search: Record<string, unknown>) => ({
     match: typeof search.match === "string" ? search.match : undefined,
+    tab: getSearchTab(search.tab),
   }),
 });
 
@@ -37,7 +40,10 @@ type PredictionValue = {
 
 type CurrentPlayer = { displayName: string } | null | undefined;
 type PrivateHomeMatchSummary = HomeMatchSummary & { matchId: Id<"matches"> };
-type MatchesResult = { upcomingMatches: PrivateHomeMatchSummary[] };
+type MatchesResult = {
+  upcomingMatches: PrivateHomeMatchSummary[];
+  historicalMatches?: PrivateHomeMatchSummary[];
+};
 type PredictionResult = Omit<PredictionValue, "homeScore" | "awayScore"> & {
   matchId: unknown;
   homeScore: bigint;
@@ -48,13 +54,21 @@ type PrivateDataState =
   | { state: "ready"; matches: MatchesResult; predictions: PredictionResult[] }
   | { state: "error"; message: string };
 
+function getSearchTab(tab: unknown): PredictionsTab | undefined {
+  if (tab === "historico" || tab === "por-venir") {
+    return tab;
+  }
+
+  return undefined;
+}
+
 function isNotAuthenticatedError(error: unknown) {
   return error instanceof Error && error.message.includes("Not authenticated");
 }
 
 function PredictionsRoute() {
   const { t } = useI18n();
-  const { match } = Route.useSearch();
+  const { match, tab } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const convex = useConvex();
   const loginWithPin = useMutation(api.players.loginWithPin);
@@ -186,13 +200,21 @@ function PredictionsRoute() {
   }, [predictionOverrides, privateData]);
 
   const upcomingMatches = privateData.state === "ready" ? privateData.matches.upcomingMatches : [];
-  const focusedMatchIndex = getFocusedMatchIndex({
+  const historicalMatches = privateData.state === "ready" ? (privateData.matches.historicalMatches ?? []) : [];
+  const activeTab = getActiveTab({
+    requestedTab: tab,
+    focusedMatchId: match,
     upcomingMatches,
+    historicalMatches,
+  });
+  const visibleMatches = activeTab === "historico" ? historicalMatches : upcomingMatches;
+  const focusedMatchIndex = getFocusedMatchIndex({
+    matches: visibleMatches,
     focusedMatchId: match,
     predictionByMatchId,
   });
-  const focusedMatch = upcomingMatches[focusedMatchIndex];
-  const nextBatchMatches = getNextBatchMatches(upcomingMatches);
+  const focusedMatch = visibleMatches[focusedMatchIndex];
+  const nextBatchMatches = getNextBatchMatches(visibleMatches);
   const nextBatchPendingCount = nextBatchMatches.filter((upcomingMatch) => {
     const key = String(upcomingMatch.matchId);
     return !predictionByMatchId.has(key) && now < upcomingMatch.kickoffAt;
@@ -324,7 +346,7 @@ function PredictionsRoute() {
   const status = isLocked ? "locked" : (saveStateByMatchId[focusedMatchId] ?? "idle");
 
   function moveToMatch(nextIndex: number) {
-    const nextMatch = upcomingMatches[nextIndex];
+    const nextMatch = visibleMatches[nextIndex];
     if (!nextMatch) {
       return;
     }
@@ -333,6 +355,19 @@ function PredictionsRoute() {
       search: (prev) => ({
         ...prev,
         match: String(nextMatch.matchId),
+        tab: activeTab,
+      }),
+    });
+  }
+
+  function changeTab(nextTab: PredictionsTab) {
+    const nextMatches = nextTab === "historico" ? historicalMatches : upcomingMatches;
+
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        match: nextMatches[0] ? String(nextMatches[0].matchId) : undefined,
+        tab: nextTab,
       }),
     });
   }
@@ -418,8 +453,12 @@ function PredictionsRoute() {
   return (
     <AppSection
       eyebrow={t.predictions.sectionEyebrow}
-      title={t.predictions.mainTitle}
-      description={t.predictions.mainDescription}
+      title={activeTab === "historico" ? t.predictions.historyTitle : t.predictions.mainTitle}
+      description={
+        activeTab === "historico"
+          ? t.predictions.historyDescription
+          : t.predictions.mainDescription
+      }
       className="px-3 py-3 sm:px-6 sm:py-6"
       contentClassName="space-y-3 sm:space-y-4"
       action={
@@ -429,20 +468,29 @@ function PredictionsRoute() {
       }
     >
       <div className="space-y-3 pb-24 sm:space-y-4 sm:pb-0">
-        <div className="hidden gap-3 rounded-[1.5rem] border border-[#2A398D]/15 bg-[#2A398D]/6 p-4 text-sm text-[#1f2f78] sm:grid sm:grid-cols-3 sm:p-5">
-          <div className="flex items-start gap-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">1</span>
-            <p><span className="font-bold">{t.predictions.step1Title}</span> {t.predictions.step1Body}</p>
+        <PredictionTabs
+          activeTab={activeTab}
+          historicalCount={historicalMatches.length}
+          upcomingCount={upcomingMatches.length}
+          onChange={changeTab}
+        />
+
+        {activeTab === "por-venir" ? (
+          <div className="hidden gap-3 rounded-[1.5rem] border border-[#2A398D]/15 bg-[#2A398D]/6 p-4 text-sm text-[#1f2f78] sm:grid sm:grid-cols-3 sm:p-5">
+            <div className="flex items-start gap-3">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">1</span>
+              <p><span className="font-bold">{t.predictions.step1Title}</span> {t.predictions.step1Body}</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">2</span>
+              <p><span className="font-bold">{t.predictions.step2Title}</span> {t.predictions.step2Body}</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">3</span>
+              <p><span className="font-bold">{t.predictions.step3Title}</span> {t.predictions.step3Body}</p>
+            </div>
           </div>
-          <div className="flex items-start gap-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">2</span>
-            <p><span className="font-bold">{t.predictions.step2Title}</span> {t.predictions.step2Body}</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2A398D] text-xs font-bold text-white">3</span>
-            <p><span className="font-bold">{t.predictions.step3Title}</span> {t.predictions.step3Body}</p>
-          </div>
-        </div>
+        ) : null}
         <PredictionCard
           isLocked={isLocked}
           isSaving={status === "saving"}
@@ -464,22 +512,22 @@ function PredictionsRoute() {
 
         <PredictionProgress
           currentIndex={focusedMatchIndex}
-          hasNext={focusedMatchIndex < upcomingMatches.length - 1}
+          hasNext={focusedMatchIndex < visibleMatches.length - 1}
           hasPrevious={focusedMatchIndex > 0}
           nextBatchPendingCount={nextBatchPendingCount}
           nextBatchTotalCount={nextBatchMatches.length}
-          totalCount={upcomingMatches.length}
+          totalCount={visibleMatches.length}
           onNext={() => moveToMatch(focusedMatchIndex + 1)}
           onPrevious={() => moveToMatch(focusedMatchIndex - 1)}
         />
       </div>
       <MobilePredictionWizardNav
         canSave={focusedDraftState?.canSave ?? false}
-        hasNext={focusedMatchIndex < upcomingMatches.length - 1}
+        hasNext={focusedMatchIndex < visibleMatches.length - 1}
         hasPrevious={focusedMatchIndex > 0}
         isSaving={status === "saving"}
         match={focusedMatch}
-        sameDateMatchCount={getSameDateMatchCount(upcomingMatches, focusedMatch)}
+        sameDateMatchCount={getSameDateMatchCount(visibleMatches, focusedMatch)}
         scores={focusedDraftState?.scores ?? null}
         statusLabel={focusedDraftState?.displayState === "saved" && focusedDraftState.draftMatchesSavedScore ? t.common.saved : undefined}
         onNext={() => moveToMatch(focusedMatchIndex + 1)}
@@ -554,6 +602,52 @@ function MobilePredictionWizardNav({
   );
 }
 
+function PredictionTabs({
+  activeTab,
+  historicalCount,
+  upcomingCount,
+  onChange,
+}: {
+  activeTab: PredictionsTab;
+  historicalCount: number;
+  upcomingCount: number;
+  onChange: (tab: PredictionsTab) => void;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-border/70 bg-muted/35 p-1.5">
+      <button
+        type="button"
+        className={getTabClassName(activeTab === "por-venir")}
+        aria-pressed={activeTab === "por-venir"}
+        onClick={() => onChange("por-venir")}
+      >
+        <span>{t.predictions.upcomingTab}</span>
+        <span className="rounded-full bg-current/10 px-2 py-0.5 text-[0.7rem] font-bold">{upcomingCount}</span>
+      </button>
+      <button
+        type="button"
+        className={getTabClassName(activeTab === "historico")}
+        aria-pressed={activeTab === "historico"}
+        onClick={() => onChange("historico")}
+      >
+        <span>{t.predictions.historyTab}</span>
+        <span className="rounded-full bg-current/10 px-2 py-0.5 text-[0.7rem] font-bold">{historicalCount}</span>
+      </button>
+    </div>
+  );
+}
+
+function getTabClassName(isActive: boolean) {
+  return [
+    "flex min-h-11 items-center justify-center gap-2 rounded-[0.9rem] px-3 text-sm font-bold transition",
+    isActive
+      ? "bg-background text-foreground shadow-[0_10px_28px_-24px_rgba(42,57,141,0.8)]"
+      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+  ].join(" ");
+}
+
 function PredictionsLoadingState() {
   const { t } = useI18n();
 
@@ -596,27 +690,59 @@ function PredictionsRetryState({
   );
 }
 
-function getFocusedMatchIndex({
+function getActiveTab({
+  requestedTab,
+  focusedMatchId,
   upcomingMatches,
+  historicalMatches,
+}: {
+  requestedTab?: PredictionsTab;
+  focusedMatchId?: string;
+  upcomingMatches: HomeMatchSummary[];
+  historicalMatches: HomeMatchSummary[];
+}): PredictionsTab {
+  if (focusedMatchId) {
+    if (historicalMatches.some((historicalMatch) => String(historicalMatch.matchId) === focusedMatchId)) {
+      return "historico";
+    }
+
+    if (upcomingMatches.some((upcomingMatch) => String(upcomingMatch.matchId) === focusedMatchId)) {
+      return "por-venir";
+    }
+  }
+
+  if (requestedTab === "historico" && historicalMatches.length > 0) {
+    return "historico";
+  }
+
+  if (upcomingMatches.length === 0 && historicalMatches.length > 0) {
+    return "historico";
+  }
+
+  return "por-venir";
+}
+
+function getFocusedMatchIndex({
+  matches,
   focusedMatchId,
   predictionByMatchId,
 }: {
-  upcomingMatches: HomeMatchSummary[];
+  matches: HomeMatchSummary[];
   focusedMatchId?: string;
   predictionByMatchId: Map<string, PredictionValue>;
 }) {
-  if (upcomingMatches.length === 0) {
+  if (matches.length === 0) {
     return 0;
   }
 
   if (focusedMatchId) {
-    const focusedIndex = upcomingMatches.findIndex((upcomingMatch) => String(upcomingMatch.matchId) === focusedMatchId);
+    const focusedIndex = matches.findIndex((upcomingMatch) => String(upcomingMatch.matchId) === focusedMatchId);
     if (focusedIndex >= 0) {
       return focusedIndex;
     }
   }
 
-  const firstPendingIndex = upcomingMatches.findIndex((upcomingMatch) => !predictionByMatchId.has(String(upcomingMatch.matchId)));
+  const firstPendingIndex = matches.findIndex((upcomingMatch) => !predictionByMatchId.has(String(upcomingMatch.matchId)));
   return firstPendingIndex >= 0 ? firstPendingIndex : 0;
 }
 

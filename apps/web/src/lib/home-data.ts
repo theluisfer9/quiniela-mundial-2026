@@ -24,6 +24,7 @@ export type HomeMatchSummary = {
 
 export type HomeMatchesData = {
   upcomingMatches: HomeMatchSummary[];
+  historicalMatches?: HomeMatchSummary[];
   nextKickoff: {
     kickoffAt: number;
     matchCount: number;

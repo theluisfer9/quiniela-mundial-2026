@@ -93,7 +93,7 @@ function HomeComponent() {
           sessionToken: result.sessionToken,
           displayName: result.player.displayName,
         });
-        await navigate({ to: "/pronosticos", search: { match: undefined } });
+        await navigate({ to: "/pronosticos", search: { match: undefined, tab: undefined } });
         return;
       }
 

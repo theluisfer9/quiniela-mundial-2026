@@ -12,10 +12,10 @@ export type PublicDashboardMatch = {
 };
 
 export type PublicDashboardMatchesData = {
-  liveMatches: PublicDashboardMatch[];
-  todayMatches: PublicDashboardMatch[];
-  upcomingMatches: PublicDashboardMatch[];
-  finishedMatches: PublicDashboardMatch[];
+  liveMatches?: PublicDashboardMatch[];
+  todayMatches?: PublicDashboardMatch[];
+  upcomingMatches?: PublicDashboardMatch[];
+  finishedMatches?: PublicDashboardMatch[];
   stats: {
     leaderName: string | null;
     finishedMatchCount: number;
@@ -146,23 +146,26 @@ export function derivePublicDashboardViewModel({
     };
   }
 
+  const liveMatches = matches.liveMatches ?? [];
+  const todayMatches = matches.todayMatches ?? [];
+  const upcomingMatches = matches.upcomingMatches ?? [];
+  const finishedMatches = matches.finishedMatches ?? [];
   const publicStandings = toPublicStandingsRows(standings);
-  const totalVisibleMatches =
-    matches.todayMatches.length + matches.upcomingMatches.length + matches.finishedMatches.length;
+  const totalVisibleMatches = todayMatches.length + upcomingMatches.length + finishedMatches.length;
   const hasDashboardData = totalVisibleMatches > 0 || publicStandings.length > 0;
 
   return {
     state: hasDashboardData ? "ready" : "empty",
-    liveMatches: matches.liveMatches,
-    todayMatches: matches.todayMatches,
-    upcomingMatches: matches.upcomingMatches,
-    finishedMatches: matches.finishedMatches,
+    liveMatches,
+    todayMatches,
+    upcomingMatches,
+    finishedMatches,
     standings: publicStandings,
     statCards: buildStatCards({
       finishedMatchCount: matches.stats.finishedMatchCount,
       labels,
       standings: publicStandings,
-      todayMatchCount: matches.todayMatches.length,
+      todayMatchCount: todayMatches.length,
     }),
     totalVisibleMatches,
   };

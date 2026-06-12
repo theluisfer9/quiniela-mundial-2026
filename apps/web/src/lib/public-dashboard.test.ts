@@ -79,6 +79,29 @@ describe("derivePublicDashboardViewModel", () => {
     ]);
   });
 
+  it("treats missing match groups as empty during phased deploys", () => {
+    const dashboard = derivePublicDashboardViewModel({
+      matches: {
+        stats: {
+          leaderName: null,
+          finishedMatchCount: 0,
+          totalPredictionCountForFinishedMatches: 0,
+          bestExactScoreCount: 0,
+        },
+      },
+      standings: [],
+    });
+
+    expect(dashboard).toMatchObject({
+      state: "empty",
+      liveMatches: [],
+      todayMatches: [],
+      upcomingMatches: [],
+      finishedMatches: [],
+      totalVisibleMatches: 0,
+    });
+  });
+
   it("formats public stat labels around the tournament state", () => {
     const dashboard = derivePublicDashboardViewModel({
       matches: {

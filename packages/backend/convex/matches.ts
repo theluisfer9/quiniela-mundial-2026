@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { calculatePredictionPoints, buildStandingsRows } from "./lib/scoring";
 import { normalizeSoccerScore } from "./lib/scores";
 import { getSpanishStageLabel, getSpanishTeamName } from "./lib/teamDisplay";
@@ -25,6 +25,7 @@ const homeMatchSummary = v.object({
 
 const homeMatchesResult = v.object({
   upcomingMatches: v.array(homeMatchSummary),
+  historicalMatches: v.array(homeMatchSummary),
   pendingCount: v.number(),
   nextKickoff: v.union(
     v.null(),
@@ -57,6 +58,10 @@ const publicDashboardResult = v.object({
     totalPredictionCountForFinishedMatches: v.number(),
     bestExactScoreCount: v.number(),
   }),
+});
+
+const markStartedMatchesLiveResult = v.object({
+  updatedMatches: v.number(),
 });
 
 type FinishedMatch = Doc<"matches"> & {
@@ -142,6 +147,37 @@ function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, 
   }
 
   return summary;
+}
+
+function summarizeHomeMatch(
+  match: Doc<"matches">,
+  teamById: Map<Id<"teams">, Doc<"teams">>,
+  predictedMatchIds: Set<Id<"matches">>,
+) {
+  const homeTeam = teamById.get(match.homeTeamId);
+  const awayTeam = teamById.get(match.awayTeamId);
+  if (!homeTeam || !awayTeam) {
+    return null;
+  }
+
+  return {
+    matchId: match._id,
+    kickoffAt: match.kickoffAt,
+    stageLabel: getSpanishStageLabel(match.stageLabel),
+    homeTeam: {
+      id: homeTeam._id,
+      code: homeTeam.code,
+      name: getSpanishTeamName(homeTeam.code, homeTeam.name),
+      flagEmoji: homeTeam.flagEmoji,
+    },
+    awayTeam: {
+      id: awayTeam._id,
+      code: awayTeam.code,
+      name: getSpanishTeamName(awayTeam.code, awayTeam.name),
+      flagEmoji: awayTeam.flagEmoji,
+    },
+    hasPrediction: predictedMatchIds.has(match._id),
+  };
 }
 
 export const getPublicDashboardMatches = query({
@@ -277,44 +313,26 @@ export const listHomeMatches = query({
     const now = Date.now();
     const allMatches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
     const upcomingMatches = allMatches.filter((match) => match.kickoffAt > now);
+    const historicalMatches = allMatches.filter((match) => match.kickoffAt <= now).reverse();
     const predictionDocs = await ctx.db
       .query("predictions")
       .withIndex("by_player_id_match_id", (q) => q.eq("playerId", player.playerId))
       .collect();
     const predictedMatchIds = new Set(predictionDocs.map((prediction) => prediction.matchId));
-    const teamById = await getTeamMap(ctx, upcomingMatches);
+    const teamById = await getTeamMap(ctx, [...upcomingMatches, ...historicalMatches]);
 
-    const upcomingMatchSummaries = upcomingMatches.flatMap((match) => {
-      const homeTeam = teamById.get(match.homeTeamId);
-      const awayTeam = teamById.get(match.awayTeamId);
-      if (!homeTeam || !awayTeam) {
-        return [];
-      }
-
-      return [{
-        matchId: match._id,
-        kickoffAt: match.kickoffAt,
-        stageLabel: getSpanishStageLabel(match.stageLabel),
-        homeTeam: {
-          id: homeTeam._id,
-          code: homeTeam.code,
-          name: getSpanishTeamName(homeTeam.code, homeTeam.name),
-          flagEmoji: homeTeam.flagEmoji,
-        },
-        awayTeam: {
-          id: awayTeam._id,
-          code: awayTeam.code,
-          name: getSpanishTeamName(awayTeam.code, awayTeam.name),
-          flagEmoji: awayTeam.flagEmoji,
-        },
-        hasPrediction: predictedMatchIds.has(match._id),
-      }];
-    });
+    const summarizeForHome = (match: Doc<"matches">) => {
+      const summary = summarizeHomeMatch(match, teamById, predictedMatchIds);
+      return summary ? [summary] : [];
+    };
+    const upcomingMatchSummaries = upcomingMatches.flatMap(summarizeForHome);
+    const historicalMatchSummaries = historicalMatches.flatMap(summarizeForHome);
 
     const nextKickoffAt = upcomingMatchSummaries[0]?.kickoffAt;
 
     return {
       upcomingMatches: upcomingMatchSummaries,
+      historicalMatches: historicalMatchSummaries,
       pendingCount: upcomingMatchSummaries.filter((match) => !match.hasPrediction).length,
       nextKickoff:
         nextKickoffAt === undefined
@@ -324,5 +342,23 @@ export const listHomeMatches = query({
               matchCount: upcomingMatchSummaries.filter((match) => match.kickoffAt === nextKickoffAt).length,
             },
     };
+  },
+});
+
+export const markStartedMatchesLive = internalMutation({
+  args: {},
+  returns: markStartedMatchesLiveResult,
+  handler: async (ctx) => {
+    const now = Date.now();
+    const startedMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_status_kickoff_at", (q) => q.eq("status", "scheduled").lte("kickoffAt", now))
+      .collect();
+
+    for (const match of startedMatches) {
+      await ctx.db.patch(match._id, { status: "live" });
+    }
+
+    return { updatedMatches: startedMatches.length };
   },
 });

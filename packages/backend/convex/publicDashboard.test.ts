@@ -185,6 +185,9 @@ describe("public dashboard", () => {
 
     const dashboard = await t.query(api.matches.getPublicDashboardMatches, {});
 
+    expect(dashboard.liveMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
+      ids.todayLiveId,
+    ]);
     expect(dashboard.todayMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
       ids.todayScheduledId,
       ids.todayLiveId,

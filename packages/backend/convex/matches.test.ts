@@ -116,7 +116,7 @@ describe("matches.listHomeMatches", () => {
     const player = await seedPlayer(t);
     const sessionToken = await loginWithPin(t, player.pin);
     const matchId = await seedMatch(t, { kickoffAt: NOW + 60_000, stageLabel: "Opening Match" });
-    await seedMatch(t, { kickoffAt: NOW - 60_000, stageLabel: "Past Match" });
+    const pastMatchId = await seedMatch(t, { kickoffAt: NOW - 60_000, stageLabel: "Past Match" });
 
     const result = await t.query(api.matches.listHomeMatches, { sessionToken });
 
@@ -125,6 +125,23 @@ describe("matches.listHomeMatches", () => {
       matchId,
       kickoffAt: NOW + 60_000,
       stageLabel: "Opening Match",
+      homeTeam: {
+        code: "ARG",
+        name: "Argentina",
+        flagEmoji: "ARG",
+      },
+      awayTeam: {
+        code: "BRA",
+        name: "Brasil",
+        flagEmoji: "BRA",
+      },
+      hasPrediction: false,
+    });
+    expect(result.historicalMatches).toHaveLength(1);
+    expect(result.historicalMatches[0]).toMatchObject({
+      matchId: pastMatchId,
+      kickoffAt: NOW - 60_000,
+      stageLabel: "Past Match",
       homeTeam: {
         code: "ARG",
         name: "Argentina",
@@ -217,5 +234,79 @@ describe("matches.listHomeMatches", () => {
 
     const match = await t.run((ctx) => ctx.db.get(matchId));
     expect(match).toMatchObject({ homeScore: 1n, awayScore: 0n, status: "live" });
+  });
+});
+
+describe("matches.markStartedMatchesLive", () => {
+  const realNow = Date.now;
+
+  beforeEach(() => {
+    Date.now = () => NOW;
+  });
+
+  afterEach(() => {
+    Date.now = realNow;
+  });
+
+  it("marks scheduled matches at or after kickoff as live", async () => {
+    const t = createTest();
+    const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
+
+    const ids = await t.run(async (ctx) => ({
+      pastScheduledId: await ctx.db.insert("matches", {
+        kickoffAt: NOW - 60_000,
+        homeTeamId: argentinaId,
+        awayTeamId: brazilId,
+        stageLabel: "Past Scheduled",
+        status: "scheduled",
+      }),
+      currentScheduledId: await ctx.db.insert("matches", {
+        kickoffAt: NOW,
+        homeTeamId: brazilId,
+        awayTeamId: mexicoId,
+        stageLabel: "Current Scheduled",
+        status: "scheduled",
+      }),
+      futureScheduledId: await ctx.db.insert("matches", {
+        kickoffAt: NOW + 60_000,
+        homeTeamId: mexicoId,
+        awayTeamId: argentinaId,
+        stageLabel: "Future Scheduled",
+        status: "scheduled",
+      }),
+      alreadyLiveId: await ctx.db.insert("matches", {
+        kickoffAt: NOW - 120_000,
+        homeTeamId: argentinaId,
+        awayTeamId: mexicoId,
+        stageLabel: "Already Live",
+        status: "live",
+      }),
+      finishedId: await ctx.db.insert("matches", {
+        kickoffAt: NOW - 180_000,
+        homeTeamId: brazilId,
+        awayTeamId: argentinaId,
+        stageLabel: "Finished",
+        status: "finished",
+        homeScore: 1n,
+        awayScore: 0n,
+      }),
+    }));
+
+    await expect(t.mutation(api.matches.markStartedMatchesLive, {})).resolves.toEqual({ updatedMatches: 2 });
+    await expect(t.mutation(api.matches.markStartedMatchesLive, {})).resolves.toEqual({ updatedMatches: 0 });
+
+    const matches = await t.run(async (ctx) => ({
+      pastScheduled: await ctx.db.get(ids.pastScheduledId),
+      currentScheduled: await ctx.db.get(ids.currentScheduledId),
+      futureScheduled: await ctx.db.get(ids.futureScheduledId),
+      alreadyLive: await ctx.db.get(ids.alreadyLiveId),
+      finished: await ctx.db.get(ids.finishedId),
+    }));
+
+    expect(matches.pastScheduled?.status).toBe("live");
+    expect(matches.currentScheduled?.status).toBe("live");
+    expect(matches.futureScheduled?.status).toBe("scheduled");
+    expect(matches.alreadyLive?.status).toBe("live");
+    expect(matches.finished?.status).toBe("finished");
   });
 });

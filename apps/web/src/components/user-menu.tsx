@@ -111,7 +111,7 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
             {t.common.manual}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="sm:hidden" />
-          <DropdownMenuItem render={<Link to="/pronosticos" search={{ match: undefined }} />} className="rounded-[1rem]">
+          <DropdownMenuItem render={<Link to="/pronosticos" search={{ match: undefined, tab: undefined }} />} className="rounded-[1rem]">
             <ClipboardList className="size-4" />
             {t.common.myMatches}
           </DropdownMenuItem>
