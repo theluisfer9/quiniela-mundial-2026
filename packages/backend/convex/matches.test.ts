@@ -192,6 +192,33 @@ describe("matches.listHomeMatches", () => {
     expect(result.pendingCount).toBe(1);
   });
 
+  it("includes final scores for scored historical matches", async () => {
+    const t = createTest();
+    const player = await seedPlayer(t);
+    const sessionToken = await loginWithPin(t, player.pin);
+    const { argentinaId, brazilId } = await seedTeams(t);
+    const matchId = await t.run((ctx) =>
+      ctx.db.insert("matches", {
+        awayScore: 1n,
+        awayTeamId: brazilId,
+        homeScore: 2n,
+        homeTeamId: argentinaId,
+        kickoffAt: NOW - 60_000,
+        stageLabel: "Finished Match",
+        status: "finished",
+      }),
+    );
+
+    const result = await t.query(api.matches.listHomeMatches, { sessionToken });
+
+    expect(result.historicalMatches[0]).toMatchObject({
+      matchId,
+      awayScore: 1,
+      homeScore: 2,
+      status: "finished",
+    });
+  });
+
   it("rejects deactivated player sessions", async () => {
     const t = createTest();
     const player = await seedPlayer(t);

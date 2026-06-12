@@ -17,8 +17,11 @@ export type HomeMatchSummary = {
   matchId: string;
   kickoffAt: number;
   stageLabel: string;
+  status?: "scheduled" | "live" | "finished";
   homeTeam: HomeTeamSummary;
   awayTeam: HomeTeamSummary;
+  homeScore?: number;
+  awayScore?: number;
   hasPrediction: boolean;
 };
 

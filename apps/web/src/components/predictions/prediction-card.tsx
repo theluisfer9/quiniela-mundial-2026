@@ -11,6 +11,7 @@ import {
   getPredictionStatusLabel,
   type PredictionSaveState,
 } from "@/lib/prediction-copy";
+import { getPredictionResultSummary } from "@/lib/prediction-result";
 import { getPrivacyRevealCopy } from "@/lib/privacy-copy";
 import { localizeStageLabel, localizeTeamName } from "@/lib/team-i18n";
 
@@ -63,6 +64,16 @@ export function PredictionCard({ match, status, savedScore, isLocked, isSaving, 
   const hasCompleteDraft = parsedHomeScore !== null && parsedAwayScore !== null;
   const draftMatchesSavedScore = parsedHomeScore === savedScore.homeScore && parsedAwayScore === savedScore.awayScore;
   const canSave = !isReadOnly && hasCompleteDraft && !draftMatchesSavedScore;
+  const hasActualScore = match.homeScore !== undefined && match.awayScore !== undefined;
+  const resultSummary = hasActualScore
+    ? getPredictionResultSummary({
+        actualAway: match.awayScore!,
+        actualHome: match.homeScore!,
+        labels: t.predictionCard.resultReasons,
+        predictedAway: savedScore.awayScore,
+        predictedHome: savedScore.homeScore,
+      })
+    : null;
 
   useEffect(() => {
     onDraftStateChange?.({
@@ -169,6 +180,22 @@ export function PredictionCard({ match, status, savedScore, isLocked, isSaving, 
             />
           </div>
         </div>
+
+        {resultSummary && hasActualScore ? (
+          <div className="grid gap-3 rounded-[1.35rem] border border-[#2A398D]/14 bg-[#2A398D]/6 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5">
+            <div className="min-w-0">
+              <p className="text-[0.68rem] font-black tracking-[0.2em] text-[#2A398D]/72 uppercase">{t.predictionCard.finalScore}</p>
+              <p className="mt-2 font-display text-3xl font-extrabold tracking-[-0.04em] text-foreground">
+                {match.homeScore} - {match.awayScore}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-muted-foreground">{resultSummary.reason}</p>
+            </div>
+            <div className="rounded-[1.05rem] border border-[#2A398D]/18 bg-background/86 px-4 py-3 text-left shadow-[0_14px_30px_-26px_rgba(42,57,141,0.6)] sm:text-center">
+              <p className="text-[0.68rem] font-black tracking-[0.18em] text-[#2A398D]/72 uppercase">{t.predictionCard.yourPoints}</p>
+              <p className="mt-1 font-display text-3xl font-extrabold tracking-[-0.04em] text-[#2A398D]">+{resultSummary.points}</p>
+            </div>
+          </div>
+        ) : null}
 
         <div className="hidden gap-3 rounded-[1.5rem] border border-[#2A398D]/12 bg-[#2A398D]/5 p-4 sm:grid sm:grid-cols-[1fr_auto] sm:items-center">
           <div>

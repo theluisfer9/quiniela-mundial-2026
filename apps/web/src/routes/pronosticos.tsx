@@ -616,7 +616,7 @@ function PredictionTabs({
   const { t } = useI18n();
 
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-border/70 bg-muted/35 p-1.5">
+    <div className="grid grid-cols-2 gap-2 rounded-[1.25rem] border border-[#2A398D]/18 bg-[#2A398D]/8 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
       <button
         type="button"
         className={getTabClassName(activeTab === "por-venir")}
@@ -624,7 +624,7 @@ function PredictionTabs({
         onClick={() => onChange("por-venir")}
       >
         <span>{t.predictions.upcomingTab}</span>
-        <span className="rounded-full bg-current/10 px-2 py-0.5 text-[0.7rem] font-bold">{upcomingCount}</span>
+        <span className={getTabCountClassName(activeTab === "por-venir")}>{upcomingCount}</span>
       </button>
       <button
         type="button"
@@ -633,7 +633,7 @@ function PredictionTabs({
         onClick={() => onChange("historico")}
       >
         <span>{t.predictions.historyTab}</span>
-        <span className="rounded-full bg-current/10 px-2 py-0.5 text-[0.7rem] font-bold">{historicalCount}</span>
+        <span className={getTabCountClassName(activeTab === "historico")}>{historicalCount}</span>
       </button>
     </div>
   );
@@ -641,10 +641,17 @@ function PredictionTabs({
 
 function getTabClassName(isActive: boolean) {
   return [
-    "flex min-h-11 items-center justify-center gap-2 rounded-[0.9rem] px-3 text-sm font-bold transition",
+    "flex min-h-12 items-center justify-center gap-2 rounded-[1rem] border px-3 text-sm font-extrabold tracking-[-0.01em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2A398D] focus-visible:ring-offset-2",
     isActive
-      ? "bg-background text-foreground shadow-[0_10px_28px_-24px_rgba(42,57,141,0.8)]"
-      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+      ? "border-[#1f2f78] bg-[#2A398D] text-white shadow-[0_16px_34px_-22px_rgba(42,57,141,0.95)]"
+      : "border-transparent text-[#2A398D]/72 hover:border-[#2A398D]/18 hover:bg-background/72 hover:text-[#1f2f78]",
+  ].join(" ");
+}
+
+function getTabCountClassName(isActive: boolean) {
+  return [
+    "min-w-7 rounded-full px-2 py-0.5 text-center text-[0.7rem] font-black",
+    isActive ? "bg-white text-[#2A398D]" : "bg-[#2A398D]/10 text-[#1f2f78]",
   ].join(" ");
 }
 

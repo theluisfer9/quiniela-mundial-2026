@@ -18,8 +18,11 @@ const homeMatchSummary = v.object({
   matchId: v.id("matches"),
   kickoffAt: v.number(),
   stageLabel: v.string(),
+  status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
   homeTeam: teamSummary,
   awayTeam: teamSummary,
+  homeScore: v.optional(v.number()),
+  awayScore: v.optional(v.number()),
   hasPrediction: v.boolean(),
 });
 
@@ -160,10 +163,21 @@ function summarizeHomeMatch(
     return null;
   }
 
-  return {
+  const summary: {
+    matchId: Id<"matches">;
+    kickoffAt: number;
+    stageLabel: string;
+    status: "scheduled" | "live" | "finished";
+    homeTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
+    awayTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
+    homeScore?: number;
+    awayScore?: number;
+    hasPrediction: boolean;
+  } = {
     matchId: match._id,
     kickoffAt: match.kickoffAt,
     stageLabel: getSpanishStageLabel(match.stageLabel),
+    status: match.status,
     homeTeam: {
       id: homeTeam._id,
       code: homeTeam.code,
@@ -178,6 +192,13 @@ function summarizeHomeMatch(
     },
     hasPrediction: predictedMatchIds.has(match._id),
   };
+
+  if (isScoredMatch(match)) {
+    summary.homeScore = normalizeSoccerScore(match.homeScore);
+    summary.awayScore = normalizeSoccerScore(match.awayScore);
+  }
+
+  return summary;
 }
 
 export const getPublicDashboardMatches = query({
