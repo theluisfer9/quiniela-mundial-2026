@@ -1,11 +1,12 @@
 import { api } from "@quiniela-mundial-2026/backend/convex/_generated/api";
+import type { Id } from "@quiniela-mundial-2026/backend/convex/_generated/dataModel";
 import { AppSection } from "@quiniela-mundial-2026/ui/components/app-section";
 import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Award, BarChart3, Flame, Target, Trophy, UsersRound } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ShareStandingsExport } from "@/components/share-standings-export";
 import {
@@ -17,7 +18,9 @@ import {
   type DashboardSummaryMatchData,
   type DashboardConsensusMatch,
 } from "@/lib/dashboard-analytics";
+import { paginateConsensusMatches } from "@/lib/consensus-matches";
 import { useI18n } from "@/lib/i18n";
+import { paginateLivePredictions, type LivePredictionRow } from "@/lib/live-predictions";
 import { localizeStageLabel, localizeTeamName } from "@/lib/team-i18n";
 
 export const Route = createFileRoute("/dashboard")({
@@ -28,6 +31,13 @@ function RouteComponent() {
   const { dateLocale, locale, t } = useI18n();
   const analytics = useQuery(api.standings.getPublicDashboardAnalytics, {}) as DashboardAnalyticsData | undefined;
   const matches = useQuery(api.matches.getPublicDashboardMatches, {}) as DashboardSummaryMatchData | undefined;
+  const [selectedConsensusMatchId, setSelectedConsensusMatchId] = useState<string | null>(null);
+  const [predictionsPage, setPredictionsPage] = useState(1);
+  const selectedConsensusMatch = analytics?.consensusMatches.find((match) => match.matchId === selectedConsensusMatchId) ?? null;
+  const selectedPredictions = useQuery(
+    api.predictions.listPublicMatchPredictions,
+    selectedConsensusMatch ? { matchId: selectedConsensusMatch.matchId as Id<"matches"> } : "skip",
+  ) as LivePredictionRow[] | undefined;
   const summaryMatches = matches
     ? {
         ...matches,
@@ -146,11 +156,26 @@ function RouteComponent() {
         className="border-primary/15 bg-card/98"
       >
         {analytics && analytics.consensusMatches.length > 0 ? (
-          <ConsensusGrid matches={analytics.consensusMatches} />
+          <ConsensusGrid
+            matches={analytics.consensusMatches}
+            onSelectMatch={(match) => {
+              setSelectedConsensusMatchId(match.matchId);
+              setPredictionsPage(1);
+            }}
+          />
         ) : (
           <EmptyPanel label={t.dashboard.emptyConsensus} />
         )}
       </AppSection>
+      {selectedConsensusMatch ? (
+        <ConsensusPredictionsModal
+          match={selectedConsensusMatch}
+          page={predictionsPage}
+          predictions={selectedPredictions}
+          onClose={() => setSelectedConsensusMatchId(null)}
+          onPageChange={setPredictionsPage}
+        />
+      ) : null}
     </div>
   );
 }
@@ -314,17 +339,39 @@ function StreakList({ rows }: { rows: DashboardAnalyticsRow[] }) {
   );
 }
 
-function ConsensusGrid({ matches }: { matches: DashboardConsensusMatch[] }) {
+function ConsensusGrid({
+  matches,
+  onSelectMatch,
+}: {
+  matches: DashboardConsensusMatch[];
+  onSelectMatch: (match: DashboardConsensusMatch) => void;
+}) {
   const { locale, t } = useI18n();
+  const [page, setPage] = useState(1);
+  const paginated = paginateConsensusMatches(matches, { page, pageSize: 3 });
 
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      {matches.slice(-6).reverse().map((match) => (
-        <article key={match.matchId} className="rounded-[1.25rem] border border-border/70 bg-background/80 p-4">
+    <div className="grid gap-3">
+      <div className="grid gap-3 lg:grid-cols-3">
+      {paginated.rows.map((match) => (
+        <article
+          key={match.matchId}
+          className="cursor-pointer rounded-[1.25rem] border border-border/70 bg-background/80 p-4 transition hover:border-primary/35 hover:bg-background"
+          onClick={() => onSelectMatch(match)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelectMatch(match);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+        >
           <p className="text-[0.7rem] font-bold tracking-[0.18em] text-primary uppercase">{localizeStageLabel(match.stageLabel, locale)}</p>
           <h3 className="mt-2 text-balance font-display text-lg font-bold tracking-[-0.03em] text-foreground sm:text-xl">
             {localizeTeamName({ locale, name: match.homeTeamName })} vs {localizeTeamName({ locale, name: match.awayTeamName })}
           </h3>
+          <p className="mt-2 text-sm font-semibold text-primary">{t.home.viewLivePredictions}</p>
           <div className="mt-4 grid gap-2">
             <ConsensusBar label={localizeTeamName({ locale, name: match.homeTeamName })} count={match.homeCount} total={match.totalCount} />
             <ConsensusBar label={t.dashboard.draw} count={match.drawCount} total={match.totalCount} />
@@ -332,6 +379,111 @@ function ConsensusGrid({ matches }: { matches: DashboardConsensusMatch[] }) {
           </div>
         </article>
       ))}
+      </div>
+      {paginated.pageCount > 1 ? (
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 pt-1">
+          <Button className="h-10 rounded-[1rem]" disabled={!paginated.hasPreviousPage} onClick={() => setPage(paginated.page - 1)} type="button" variant="outline">
+            {t.common.previous}
+          </Button>
+          <p className="px-2 text-center text-xs font-semibold text-muted-foreground">
+            {paginated.page} / {paginated.pageCount}
+          </p>
+          <Button className="h-10 rounded-[1rem]" disabled={!paginated.hasNextPage} onClick={() => setPage(paginated.page + 1)} type="button" variant="outline">
+            {t.common.next}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ConsensusPredictionsModal({
+  match,
+  onClose,
+  onPageChange,
+  page,
+  predictions,
+}: {
+  match: DashboardConsensusMatch;
+  onClose: () => void;
+  onPageChange: (page: number) => void;
+  page: number;
+  predictions: LivePredictionRow[] | undefined;
+}) {
+  const { locale, t } = useI18n();
+  const paginated = predictions ? paginateLivePredictions(predictions, { page, pageSize: 8 }) : null;
+  const homeName = localizeTeamName({ locale, name: match.homeTeamName });
+  const awayName = localizeTeamName({ locale, name: match.awayTeamName });
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#11172f]/62 px-3 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_28px_80px_-40px_rgba(17,23,47,0.8)]">
+        <div className="flex items-start justify-between gap-4 border-b border-border/70 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-[0.7rem] font-bold tracking-[0.18em] text-primary uppercase">{localizeStageLabel(match.stageLabel, locale)}</p>
+            <h3 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.04em] text-foreground">{t.home.livePredictionsTitle}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{homeName} vs {awayName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t.home.livePredictionsDescription}</p>
+          </div>
+          <Button className="h-10 shrink-0 rounded-[0.9rem]" onClick={onClose} type="button" variant="outline">
+            {t.common.close}
+          </Button>
+        </div>
+
+        <div className="max-h-[58vh] overflow-y-auto p-4">
+          {predictions === undefined ? (
+            <p className="rounded-[1rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">{t.home.livePredictionsLoading}</p>
+          ) : predictions.length === 0 ? (
+            <p className="rounded-[1rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">{t.home.livePredictionsEmpty}</p>
+          ) : (
+            <div className="overflow-hidden rounded-[1.1rem] border border-border/70 bg-background/80">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border/70 text-[0.7rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                    <th className="px-4 py-3 text-left font-semibold" scope="col">{t.home.participant}</th>
+                    <th className="px-4 py-3 text-right font-semibold" scope="col">{t.home.prediction}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated!.rows.map((prediction) => (
+                    <tr key={prediction.playerName} className="border-b border-border/60 last:border-b-0">
+                      <td className="px-4 py-3 font-semibold text-foreground">{prediction.playerName}</td>
+                      <td className="px-4 py-3 text-right font-display text-lg font-bold text-foreground">
+                        {String(prediction.homeScore)}-{String(prediction.awayScore)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {paginated && paginated.pageCount > 1 ? (
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-border/70 px-4 py-3">
+            <Button className="h-10 rounded-[1rem]" disabled={!paginated.hasPreviousPage} onClick={() => onPageChange(paginated.page - 1)} type="button" variant="outline">
+              {t.common.previous}
+            </Button>
+            <p className="px-2 text-center text-xs font-semibold text-muted-foreground">
+              {paginated.page} / {paginated.pageCount}
+            </p>
+            <Button className="h-10 rounded-[1rem]" disabled={!paginated.hasNextPage} onClick={() => onPageChange(paginated.page + 1)} type="button" variant="outline">
+              {t.common.next}
+            </Button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
