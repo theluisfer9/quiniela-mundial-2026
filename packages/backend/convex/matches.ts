@@ -6,6 +6,7 @@ import { calculatePredictionPoints, buildStandingsRows } from "./lib/scoring";
 import { normalizeSoccerScore } from "./lib/scores";
 import { getSpanishStageLabel, getSpanishTeamName } from "./lib/teamDisplay";
 import { requirePlayerBySessionToken } from "./players";
+import { requireScoreOperatorBySessionToken } from "./scoreOperators";
 
 const teamSummary = v.object({
   id: v.id("teams"),
@@ -61,6 +62,10 @@ const publicDashboardResult = v.object({
     totalPredictionCountForFinishedMatches: v.number(),
     bestExactScoreCount: v.number(),
   }),
+});
+
+const manageableMatchesResult = v.object({
+  matches: v.array(publicMatchSummary),
 });
 
 const markStartedMatchesLiveResult = v.object({
@@ -309,6 +314,72 @@ export const updateMatchScore = mutation({
     const match = await ctx.db.get(args.matchId);
     if (!match) {
       throw new Error("Match not found");
+    }
+
+    await ctx.db.patch(args.matchId, {
+      homeScore: BigInt(homeScore),
+      awayScore: BigInt(awayScore),
+      status: args.status,
+    });
+
+    return {
+      matchId: args.matchId,
+      homeScore,
+      awayScore,
+      status: args.status,
+    };
+  },
+});
+
+export const listManageableMatches = query({
+  args: { sessionToken: v.string() },
+  returns: manageableMatchesResult,
+  handler: async (ctx, args) => {
+    await requireScoreOperatorBySessionToken(ctx, args.sessionToken);
+
+    const allMatches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
+    const teamById = await getTeamMap(ctx, allMatches);
+    const matches = allMatches
+      .filter((match) => match.status === "live")
+      .flatMap((match) => {
+        const summary = summarizePublicMatch(match, teamById);
+        return summary ? [summary] : [];
+      });
+
+    return { matches };
+  },
+});
+
+export const updateMatchScoreWithOperatorSession = mutation({
+  args: {
+    sessionToken: v.string(),
+    matchId: v.id("matches"),
+    homeScore: v.number(),
+    awayScore: v.number(),
+    status: v.union(v.literal("live"), v.literal("finished")),
+  },
+  returns: v.object({
+    matchId: v.id("matches"),
+    homeScore: v.number(),
+    awayScore: v.number(),
+    status: v.union(v.literal("live"), v.literal("finished")),
+  }),
+  handler: async (ctx, args) => {
+    await requireScoreOperatorBySessionToken(ctx, args.sessionToken);
+
+    if (!Number.isInteger(args.homeScore) || !Number.isInteger(args.awayScore)) {
+      throw new Error("Score must be an integer");
+    }
+
+    const homeScore = normalizeSoccerScore(BigInt(args.homeScore));
+    const awayScore = normalizeSoccerScore(BigInt(args.awayScore));
+    const match = await ctx.db.get(args.matchId);
+    if (!match) {
+      throw new Error("Match not found");
+    }
+
+    if (match.status !== "live") {
+      throw new Error("Only live matches can be updated");
     }
 
     await ctx.db.patch(args.matchId, {

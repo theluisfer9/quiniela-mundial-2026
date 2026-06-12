@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PronosticosRouteImport } from './routes/pronosticos'
+import { Route as MarcadoresRouteImport } from './routes/marcadores'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const PronosticosRoute = PronosticosRouteImport.update({
   id: '/pronosticos',
   path: '/pronosticos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarcadoresRoute = MarcadoresRouteImport.update({
+  id: '/marcadores',
+  path: '/marcadores',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManualRoute = ManualRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/manual': typeof ManualRoute
+  '/marcadores': typeof MarcadoresRoute
   '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/manual': typeof ManualRoute
+  '/marcadores': typeof MarcadoresRoute
   '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/manual': typeof ManualRoute
+  '/marcadores': typeof MarcadoresRoute
   '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/manual' | '/pronosticos'
+  fullPaths: '/' | '/dashboard' | '/manual' | '/marcadores' | '/pronosticos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/manual' | '/pronosticos'
-  id: '__root__' | '/' | '/dashboard' | '/manual' | '/pronosticos'
+  to: '/' | '/dashboard' | '/manual' | '/marcadores' | '/pronosticos'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/manual'
+    | '/marcadores'
+    | '/pronosticos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   ManualRoute: typeof ManualRoute
+  MarcadoresRoute: typeof MarcadoresRoute
   PronosticosRoute: typeof PronosticosRoute
 }
 
@@ -76,6 +92,13 @@ declare module '@tanstack/react-router' {
       path: '/pronosticos'
       fullPath: '/pronosticos'
       preLoaderRoute: typeof PronosticosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marcadores': {
+      id: '/marcadores'
+      path: '/marcadores'
+      fullPath: '/marcadores'
+      preLoaderRoute: typeof MarcadoresRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manual': {
@@ -106,6 +129,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   ManualRoute: ManualRoute,
+  MarcadoresRoute: MarcadoresRoute,
   PronosticosRoute: PronosticosRoute,
 }
 export const routeTree = rootRouteImport

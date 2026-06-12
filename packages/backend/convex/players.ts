@@ -13,6 +13,7 @@ import {
   PIN_LOCKOUT_AFTER_FAILURES,
   PIN_LOCKOUT_MS,
 } from "./lib/pinAccess";
+import { createOperatorSession, getActiveOperatorByPinHash } from "./scoreOperators";
 
 const INVALID_PIN_ERROR = "PIN no reconocido. Revisa el codigo que te compartieron.";
 const LOCKED_PIN_ERROR = "Demasiados intentos. Prueba de nuevo en unos minutos.";
@@ -125,6 +126,14 @@ export const loginWithPin = mutation({
       }),
     }),
     v.object({
+      status: v.literal("ok_operator"),
+      sessionToken: v.string(),
+      operator: v.object({
+        operatorId: v.id("scoreOperators"),
+        displayName: v.string(),
+      }),
+    }),
+    v.object({
       status: v.literal("invalid_pin"),
       message: v.literal(INVALID_PIN_ERROR),
     }),
@@ -151,13 +160,30 @@ export const loginWithPin = mutation({
     }
 
     const profile = await getActivePlayerByPinHash(ctx, pinHash);
+    const operator = await getActiveOperatorByPinHash(ctx, pinHash);
 
-    if (!profile) {
+    if ((profile && operator) || (!profile && !operator)) {
       await recordFailedPinAttempt(ctx, pinHash, now);
       return invalidPinResult();
     }
 
     await resetPinAttempts(ctx, pinHash, now);
+
+    if (operator) {
+      return {
+        status: "ok_operator" as const,
+        sessionToken: await createOperatorSession(ctx, operator, now),
+        operator: {
+          operatorId: operator._id,
+          displayName: operator.displayName,
+        },
+      };
+    }
+
+    if (!profile) {
+      await recordFailedPinAttempt(ctx, pinHash, now);
+      return invalidPinResult();
+    }
 
     const sessionToken = createSessionToken();
     await ctx.db.insert("playerSessions", {

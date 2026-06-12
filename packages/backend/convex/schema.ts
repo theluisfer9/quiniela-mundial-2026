@@ -34,6 +34,28 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_pin_hash", ["pinHash"]),
 
+  scoreOperators: defineTable({
+    displayName: v.string(),
+    pinHash: v.string(),
+    active: v.optional(v.boolean()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_pin_hash", ["pinHash"])
+    .index("by_active", ["active"]),
+
+  scoreOperatorSessions: defineTable({
+    operatorId: v.id("scoreOperators"),
+    tokenHash: v.string(),
+    createdAt: v.number(),
+    lastUsedAt: v.number(),
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_operator_id", ["operatorId"])
+    .index("by_expires_at", ["expiresAt"]),
+
   teams: defineTable({
     code: v.string(),
     name: v.string(),

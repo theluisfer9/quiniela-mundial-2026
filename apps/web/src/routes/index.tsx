@@ -13,6 +13,7 @@ import { ShareStandingsExport } from "@/components/share-standings-export";
 import { translatePinResultMessage, useI18n } from "@/lib/i18n";
 import { paginateLivePredictions, type LivePredictionRow } from "@/lib/live-predictions";
 import { localizeStageLabel, localizeTeamName } from "@/lib/team-i18n";
+import { storeOperatorSession } from "@/lib/operator-session";
 import {
   getStoredPlayerSession,
   storePlayerSession,
@@ -104,6 +105,15 @@ function HomeComponent() {
           displayName: result.player.displayName,
         });
         await navigate({ to: "/pronosticos", search: { match: undefined, tab: undefined } });
+        return;
+      }
+
+      if (result.status === "ok_operator") {
+        storeOperatorSession({
+          sessionToken: result.sessionToken,
+          displayName: result.operator.displayName,
+        });
+        await navigate({ to: "/marcadores" });
         return;
       }
 
