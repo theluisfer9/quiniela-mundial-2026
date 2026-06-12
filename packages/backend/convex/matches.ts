@@ -356,7 +356,11 @@ export const markStartedMatchesLive = internalMutation({
       .collect();
 
     for (const match of startedMatches) {
-      await ctx.db.patch(match._id, { status: "live" });
+      await ctx.db.patch(match._id, {
+        awayScore: 0n,
+        homeScore: 0n,
+        status: "live",
+      });
     }
 
     return { updatedMatches: startedMatches.length };

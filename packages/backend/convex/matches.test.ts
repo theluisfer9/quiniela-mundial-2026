@@ -304,9 +304,15 @@ describe("matches.markStartedMatchesLive", () => {
     }));
 
     expect(matches.pastScheduled?.status).toBe("live");
+    expect(matches.pastScheduled).toMatchObject({ homeScore: 0n, awayScore: 0n });
     expect(matches.currentScheduled?.status).toBe("live");
+    expect(matches.currentScheduled).toMatchObject({ homeScore: 0n, awayScore: 0n });
     expect(matches.futureScheduled?.status).toBe("scheduled");
+    expect(matches.futureScheduled?.homeScore).toBeUndefined();
+    expect(matches.futureScheduled?.awayScore).toBeUndefined();
     expect(matches.alreadyLive?.status).toBe("live");
+    expect(matches.alreadyLive?.homeScore).toBeUndefined();
+    expect(matches.alreadyLive?.awayScore).toBeUndefined();
     expect(matches.finished?.status).toBe("finished");
   });
 });
