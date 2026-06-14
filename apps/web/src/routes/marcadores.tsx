@@ -6,6 +6,7 @@ import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvex, useMutation } from "convex/react";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { PinEntryForm } from "@/components/pin-entry-form";
 import { useI18n } from "@/lib/i18n";
@@ -153,7 +154,18 @@ function ScoreManagerRoute() {
     const homeScore = Number(draft?.homeScore);
     const awayScore = Number(draft?.awayScore);
     if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0) {
+      toast.error("Revisa el marcador", { description: "Los goles deben ser números enteros de 0 en adelante." });
       return;
+    }
+
+    if (status === "finished") {
+      const confirmed = window.confirm(
+        `¿Finalizar ${match.homeTeam.name} ${homeScore}-${awayScore} ${match.awayTeam.name}? Ya no aparecerá para edición en vivo.`,
+      );
+
+      if (!confirmed) {
+        return;
+      }
     }
 
     setSavingMatchId(String(match.matchId));
@@ -174,6 +186,11 @@ function ScoreManagerRoute() {
           homeScore: String(nextMatch.homeScore ?? 0),
         },
       ])));
+      toast.success(status === "finished" ? "Partido finalizado" : "Marcador en vivo guardado", {
+        description: `${match.homeTeam.name} ${homeScore}-${awayScore} ${match.awayTeam.name}`,
+      });
+    } catch {
+      toast.error("No se pudo guardar el marcador", { description: "Intenta de nuevo en unos segundos." });
     } finally {
       setSavingMatchId(null);
     }
