@@ -1,4 +1,5 @@
 const OPERATOR_SESSION_STORAGE_KEY = "quiniela.scoreOperatorSession";
+const OPERATOR_SESSION_CHANGED_EVENT = "quiniela:operator-session-changed";
 
 export type StoredOperatorSession = {
   sessionToken: string;
@@ -24,6 +25,27 @@ function isStoredOperatorSession(value: unknown): value is StoredOperatorSession
     typeof (value as StoredOperatorSession).sessionToken === "string" &&
     typeof (value as StoredOperatorSession).displayName === "string"
   );
+}
+
+function dispatchOperatorSessionChanged() {
+  try {
+    window.dispatchEvent(new Event(OPERATOR_SESSION_CHANGED_EVENT));
+  } catch {
+    return;
+  }
+}
+
+export function subscribeToOperatorSessionChanges(listener: () => void) {
+  try {
+    if (typeof window === "undefined") {
+      return () => {};
+    }
+
+    window.addEventListener(OPERATOR_SESSION_CHANGED_EVENT, listener);
+    return () => window.removeEventListener(OPERATOR_SESSION_CHANGED_EVENT, listener);
+  } catch {
+    return () => {};
+  }
 }
 
 export function getStoredOperatorSession(): StoredOperatorSession | null {
@@ -64,6 +86,7 @@ export function storeOperatorSession(session: StoredOperatorSession) {
     displayName: session.displayName,
     sessionToken: session.sessionToken,
   }));
+  dispatchOperatorSessionChanged();
 }
 
 export function clearOperatorSession() {
@@ -73,4 +96,5 @@ export function clearOperatorSession() {
   }
 
   localStorage.removeItem(OPERATOR_SESSION_STORAGE_KEY);
+  dispatchOperatorSessionChanged();
 }

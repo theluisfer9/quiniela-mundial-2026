@@ -2,9 +2,10 @@ import { api } from "@quiniela-mundial-2026/backend/convex/_generated/api";
 import type { Id } from "@quiniela-mundial-2026/backend/convex/_generated/dataModel";
 import { AppSection } from "@quiniela-mundial-2026/ui/components/app-section";
 import { Button } from "@quiniela-mundial-2026/ui/components/button";
+import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvex, useMutation } from "convex/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { PinEntryForm } from "@/components/pin-entry-form";
 import { useI18n } from "@/lib/i18n";
@@ -30,9 +31,31 @@ type ManageableMatch = {
   awayScore?: number;
 };
 
+type OperatorMatchVote = {
+  playerName: string;
+  hasPrediction: boolean;
+  homeScore?: bigint;
+  awayScore?: bigint;
+  updatedAt?: number;
+};
+
+type OperatorMatchVotes = {
+  matchId: Id<"matches">;
+  kickoffAt: number;
+  stageLabel: string;
+  status: "scheduled" | "live" | "finished";
+  homeTeamName: string;
+  awayTeamName: string;
+  totalPlayers: number;
+  votedCount: number;
+  votes: OperatorMatchVote[];
+};
+
+type OperatorTab = "scores" | "votes";
+
 type DataState =
   | { state: "idle" | "loading" }
-  | { state: "ready"; matches: ManageableMatch[] }
+  | { state: "ready"; matches: ManageableMatch[]; voteMatches: OperatorMatchVotes[] }
   | { state: "error"; message: string };
 
 function ScoreManagerRoute() {
@@ -46,6 +69,16 @@ function ScoreManagerRoute() {
   const [isSubmittingPin, setIsSubmittingPin] = useState(false);
   const [savingMatchId, setSavingMatchId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { homeScore: string; awayScore: string }>>({});
+  const [activeTab, setActiveTab] = useState<OperatorTab>("scores");
+
+  async function loadOperatorData(sessionToken: string) {
+    const [manageableResult, votesResult] = await Promise.all([
+      convex.query(api.matches.listManageableMatches, { sessionToken }),
+      convex.query(api.predictions.listOperatorMatchVotes, { sessionToken }),
+    ]);
+
+    return { manageableResult, votesResult };
+  }
 
   useEffect(() => {
     if (!session) {
@@ -56,15 +89,14 @@ function ScoreManagerRoute() {
     let isCurrent = true;
     setData({ state: "loading" });
 
-    void convex
-      .query(api.matches.listManageableMatches, { sessionToken: session.sessionToken })
-      .then((result) => {
+    void loadOperatorData(session.sessionToken)
+      .then(({ manageableResult, votesResult }) => {
         if (!isCurrent) {
           return;
         }
 
-        setData({ state: "ready", matches: result.matches });
-        setDrafts(Object.fromEntries(result.matches.map((match: ManageableMatch) => [
+        setData({ state: "ready", matches: manageableResult.matches, voteMatches: votesResult.matches });
+        setDrafts(Object.fromEntries(manageableResult.matches.map((match: ManageableMatch) => [
           String(match.matchId),
           {
             awayScore: String(match.awayScore ?? 0),
@@ -133,9 +165,9 @@ function ScoreManagerRoute() {
         sessionToken: session.sessionToken,
         status,
       });
-      const result = await convex.query(api.matches.listManageableMatches, { sessionToken: session.sessionToken });
-      setData({ state: "ready", matches: result.matches });
-      setDrafts(Object.fromEntries(result.matches.map((nextMatch: ManageableMatch) => [
+      const { manageableResult, votesResult } = await loadOperatorData(session.sessionToken);
+      setData({ state: "ready", matches: manageableResult.matches, voteMatches: votesResult.matches });
+      setDrafts(Object.fromEntries(manageableResult.matches.map((nextMatch: ManageableMatch) => [
         String(nextMatch.matchId),
         {
           awayScore: String(nextMatch.awayScore ?? 0),
@@ -169,8 +201,8 @@ function ScoreManagerRoute() {
   return (
     <AppSection
       eyebrow="Operador"
-      title="Marcadores en vivo"
-      description={`Sesión de ${session.displayName}. Solo aparecen partidos actualmente en vivo.`}
+      title="Panel de operador"
+      description={`Sesión de ${session.displayName}. Actualiza partidos en vivo o revisa votos cargados por partido.`}
       action={
         <Button
           type="button"
@@ -184,16 +216,20 @@ function ScoreManagerRoute() {
         </Button>
       }
     >
+      <div className="grid grid-cols-2 gap-2 rounded-[1.15rem] bg-muted p-1">
+        <TabButton active={activeTab === "scores"} onClick={() => setActiveTab("scores")}>Marcadores en vivo</TabButton>
+        <TabButton active={activeTab === "votes"} onClick={() => setActiveTab("votes")}>Votos por partido</TabButton>
+      </div>
       {data.state === "loading" ? (
-        <p className="rounded-[1.25rem] border border-border/70 bg-card/90 px-4 py-4 text-sm text-muted-foreground">Cargando partidos en vivo...</p>
+        <p className="rounded-[1.25rem] border border-border/70 bg-card/90 px-4 py-4 text-sm text-muted-foreground">Cargando panel de operador...</p>
       ) : null}
       {data.state === "error" ? (
         <p className="rounded-[1.25rem] border border-destructive/25 bg-destructive/10 px-4 py-4 text-sm text-destructive">{data.message}</p>
       ) : null}
-      {data.state === "ready" && data.matches.length === 0 ? (
+      {activeTab === "scores" && data.state === "ready" && data.matches.length === 0 ? (
         <p className="rounded-[1.25rem] border border-border/70 bg-card/90 px-4 py-4 text-sm text-muted-foreground">No hay partidos en vivo para editar.</p>
       ) : null}
-      {data.state === "ready" && data.matches.length > 0 ? (
+      {activeTab === "scores" && data.state === "ready" && data.matches.length > 0 ? (
         <div className="grid gap-4">
           {data.matches.map((match) => {
             const key = String(match.matchId);
@@ -233,8 +269,111 @@ function ScoreManagerRoute() {
           })}
         </div>
       ) : null}
+      {activeTab === "votes" && data.state === "ready" ? (
+        <VoteAuditPanel matches={data.voteMatches} />
+      ) : null}
     </AppSection>
   );
+}
+
+function TabButton({ active, children, onClick }: { active: boolean; children: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      className={cn(
+        "min-h-11 rounded-[0.9rem] px-3 py-2 text-sm font-black tracking-[-0.01em] transition",
+        active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+      )}
+      type="button"
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function VoteAuditPanel({ matches }: { matches: OperatorMatchVotes[] }) {
+  if (matches.length === 0) {
+    return <p className="rounded-[1.25rem] border border-border/70 bg-card/90 px-4 py-4 text-sm text-muted-foreground">No hay partidos para revisar.</p>;
+  }
+
+  return (
+    <div className="grid gap-4">
+      {matches.map((match) => <VoteAuditCard key={String(match.matchId)} match={match} />)}
+    </div>
+  );
+}
+
+function VoteAuditCard({ match }: { match: OperatorMatchVotes }) {
+  const pendingCount = match.totalPlayers - match.votedCount;
+
+  return (
+    <article className="rounded-[1.35rem] border border-border/70 bg-card/95 p-3 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)] sm:rounded-[1.5rem] sm:p-5">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-black tracking-[0.2em] text-[#2A398D]/72 uppercase">{match.stageLabel}</p>
+          <h2 className="mt-1 text-balance font-display text-xl font-extrabold leading-tight tracking-[-0.04em] text-foreground sm:text-2xl">
+            {match.homeTeamName} vs {match.awayTeamName}
+          </h2>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{formatOperatorKickoff(match.kickoffAt)}</p>
+        </div>
+        <div className="grid gap-2 sm:justify-items-end">
+          <span className={cn("w-fit rounded-full px-3 py-1 text-xs font-black tracking-[0.14em] uppercase", getStatusClassName(match.status))}>{getStatusLabel(match.status)}</span>
+          <p className="text-sm font-black text-foreground">{match.votedCount}/{match.totalPlayers} votaron</p>
+          {pendingCount > 0 ? <p className="text-xs font-semibold text-muted-foreground">Faltan {pendingCount}</p> : null}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {match.votes.map((vote) => (
+          <div key={vote.playerName} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] border border-border/70 bg-background/80 px-3 py-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-foreground">{vote.playerName}</p>
+              <p className={cn("text-xs font-semibold", vote.hasPrediction ? "text-[#08783a]" : "text-muted-foreground")}>{vote.hasPrediction ? "Voto cargado" : "Pendiente"}</p>
+            </div>
+            {vote.hasPrediction ? (
+              <span className="rounded-[0.8rem] bg-[#2A398D]/10 px-3 py-1.5 font-display text-xl font-extrabold tracking-[-0.04em] text-[#2A398D]">
+                {String(vote.homeScore)}-{String(vote.awayScore)}
+              </span>
+            ) : (
+              <span className="rounded-[0.8rem] bg-muted px-3 py-1.5 text-xs font-black tracking-[0.12em] text-muted-foreground uppercase">Sin voto</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function getStatusLabel(status: OperatorMatchVotes["status"]) {
+  if (status === "live") {
+    return "En vivo";
+  }
+
+  if (status === "finished") {
+    return "Finalizado";
+  }
+
+  return "Programado";
+}
+
+function getStatusClassName(status: OperatorMatchVotes["status"]) {
+  if (status === "live") {
+    return "bg-[#18a058]/12 text-[#08783a]";
+  }
+
+  if (status === "finished") {
+    return "bg-[#2A398D]/10 text-[#2A398D]";
+  }
+
+  return "bg-muted text-muted-foreground";
+}
+
+function formatOperatorKickoff(kickoffAt: number) {
+  return new Intl.DateTimeFormat("es-GT", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "America/Guatemala",
+  }).format(new Date(kickoffAt));
 }
 
 function ScoreBox({ label, onChange, value }: { label: string; value: string; onChange: (value: string) => void }) {

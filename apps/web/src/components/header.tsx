@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LogIn, Trophy } from "lucide-react";
+import { ClipboardList, LogIn, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { LanguageToggle } from "@/components/language-toggle";
@@ -16,11 +16,17 @@ import {
   subscribeToPlayerSessionChanges,
   type StoredPlayerSession,
 } from "@/lib/player-session";
+import {
+  getStoredOperatorSession,
+  subscribeToOperatorSessionChanges,
+  type StoredOperatorSession,
+} from "@/lib/operator-session";
 import { useI18n } from "@/lib/i18n";
 
 export default function Header() {
   const { t } = useI18n();
   const [storedSession, setStoredSession] = useState<StoredPlayerSession | null>(() => getStoredPlayerSession());
+  const [operatorSession, setOperatorSession] = useState<StoredOperatorSession | null>(() => getStoredOperatorSession());
   const accountState = getHeaderAccountState(storedSession);
   const showPrimaryNav = shouldShowPrimaryNav(accountState);
   const accountAffordance = getHeaderAccountAffordance(accountState, storedSession?.displayName, {
@@ -37,15 +43,18 @@ export default function Header() {
   useEffect(() => {
     function refreshStoredSession() {
       setStoredSession(getStoredPlayerSession());
+      setOperatorSession(getStoredOperatorSession());
     }
 
     refreshStoredSession();
     const unsubscribeFromPlayerSessionChanges = subscribeToPlayerSessionChanges(refreshStoredSession);
+    const unsubscribeFromOperatorSessionChanges = subscribeToOperatorSessionChanges(refreshStoredSession);
     window.addEventListener("storage", refreshStoredSession);
     window.addEventListener("focus", refreshStoredSession);
 
     return () => {
       unsubscribeFromPlayerSessionChanges();
+      unsubscribeFromOperatorSessionChanges();
       window.removeEventListener("storage", refreshStoredSession);
       window.removeEventListener("focus", refreshStoredSession);
     };
@@ -96,6 +105,14 @@ export default function Header() {
               <LanguageToggle />
               {accountState === "storedPlayer" && storedSession ? (
                 <UserMenu playerSession={storedSession} onPlayerSessionCleared={() => setStoredSession(null)} />
+              ) : operatorSession ? (
+                <Link
+                  to="/marcadores"
+                  className="group inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[0.9rem] bg-[#2A398D] px-4 text-sm font-bold text-white shadow-[0_12px_24px_-18px_rgba(42,57,141,0.75)] transition-[background-color,transform,box-shadow] hover:bg-[#24327d] hover:shadow-[0_16px_28px_-20px_rgba(42,57,141,0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2A398D]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-11 sm:w-auto sm:min-w-[9.5rem] sm:rounded-[1rem]"
+                >
+                  <ClipboardList className="size-4 opacity-80 transition-transform group-hover:translate-x-0.5" />
+                  Operador
+                </Link>
               ) : (
                 <a
                   href={`${AUTH_ENTRY_PATH}#pin-acceso`}

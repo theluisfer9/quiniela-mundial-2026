@@ -16,6 +16,7 @@ const testModules = {
   "./_generated/api.ts": async () => ({}),
   "./players.ts": async () => await import("./players"),
   "./predictions.ts": async () => await import("./predictions"),
+  "./scoreOperators.ts": async () => await import("./scoreOperators"),
 } satisfies Record<string, () => Promise<unknown>>;
 
 function createTest() {
@@ -41,9 +42,30 @@ async function seedPlayer(
   return { playerId, displayName, pin };
 }
 
+async function seedOperator(t: TestInstance, { displayName = "Marcador", pin = "M1M1" } = {}) {
+  const pinHash = await hashPin(pin, TEST_PEPPER);
+  const operatorId = await t.run((ctx) =>
+    ctx.db.insert("scoreOperators", {
+      active: true,
+      createdAt: NOW,
+      displayName,
+      pinHash,
+      updatedAt: NOW,
+    }),
+  );
+
+  return { operatorId, displayName, pin };
+}
+
 async function loginWithPin(t: TestInstance, pin: string) {
   const result = await t.mutation(api.players.loginWithPin, { pin });
   expect(result.status).toBe("ok");
+  return result.sessionToken as string;
+}
+
+async function loginOperatorWithPin(t: TestInstance, pin: string) {
+  const result = await t.mutation(api.players.loginWithPin, { pin });
+  expect(result.status).toBe("ok_operator");
   return result.sessionToken as string;
 }
 
@@ -245,5 +267,36 @@ describe("predictions", () => {
     await t.mutation(api.predictions.upsertPrediction, { sessionToken, matchId, homeScore: 1n, awayScore: 0n });
 
     await expect(t.query(api.predictions.listPublicMatchPredictions, { matchId })).rejects.toThrow("Match predictions are private until kickoff");
+  });
+
+  it("lets operators inspect scheduled match votes and pending players", async () => {
+    const t = createTest();
+    const operator = await seedOperator(t);
+    const ana = await seedPlayer(t, { displayName: "Ana", pin: "A1B2" });
+    await seedPlayer(t, { displayName: "Beto", pin: "B2C3" });
+    const anaSessionToken = await loginWithPin(t, ana.pin);
+    const operatorSessionToken = await loginOperatorWithPin(t, operator.pin);
+    const matchId = await seedMatch(t, NOW + 60_000);
+    await t.mutation(api.predictions.upsertPrediction, { sessionToken: anaSessionToken, matchId, homeScore: 3n, awayScore: 1n });
+
+    await expect(t.query(api.predictions.listOperatorMatchVotes, { sessionToken: operatorSessionToken })).resolves.toMatchObject({
+      matches: [
+        {
+          matchId,
+          totalPlayers: 2,
+          votedCount: 1,
+          votes: [
+            { playerName: "Ana", homeScore: 3n, awayScore: 1n, hasPrediction: true },
+            { playerName: "Beto", hasPrediction: false },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("rejects fake operator sessions when inspecting votes", async () => {
+    const t = createTest();
+
+    await expect(t.query(api.predictions.listOperatorMatchVotes, { sessionToken: "fake-token" })).rejects.toThrow("Not authenticated");
   });
 });
