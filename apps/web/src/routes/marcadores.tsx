@@ -292,13 +292,78 @@ function TabButton({ active, children, onClick }: { active: boolean; children: R
 }
 
 function VoteAuditPanel({ matches }: { matches: OperatorMatchVotes[] }) {
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(() => matches[0] ? String(matches[0].matchId) : null);
+
+  useEffect(() => {
+    if (matches.length === 0) {
+      setSelectedMatchId(null);
+      return;
+    }
+
+    if (!selectedMatchId || !matches.some((match) => String(match.matchId) === selectedMatchId)) {
+      setSelectedMatchId(String(matches[0].matchId));
+    }
+  }, [matches, selectedMatchId]);
+
   if (matches.length === 0) {
     return <p className="rounded-[1.25rem] border border-border/70 bg-card/90 px-4 py-4 text-sm text-muted-foreground">No hay partidos para revisar.</p>;
   }
 
+  const selectedIndex = Math.max(0, matches.findIndex((match) => String(match.matchId) === selectedMatchId));
+  const selectedMatch = matches[selectedIndex] ?? matches[0];
+
   return (
-    <div className="grid gap-4">
-      {matches.map((match) => <VoteAuditCard key={String(match.matchId)} match={match} />)}
+    <div className="grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
+      <div className="rounded-[1.25rem] border border-border/70 bg-card/95 p-3 lg:sticky lg:top-24">
+        <div className="grid gap-2 lg:hidden">
+          <label className="grid gap-2">
+            <span className="text-xs font-black tracking-[0.16em] text-muted-foreground uppercase">Partido</span>
+            <select
+              className="min-h-12 rounded-[1rem] border border-border/80 bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-[#2A398D] focus:ring-2 focus:ring-[#2A398D]/20"
+              value={String(selectedMatch.matchId)}
+              onChange={(event) => setSelectedMatchId(event.target.value)}
+            >
+              {matches.map((match, index) => (
+                <option key={String(match.matchId)} value={String(match.matchId)}>
+                  {index + 1}. {match.homeTeamName} vs {match.awayTeamName} ({match.votedCount}/{match.totalPlayers})
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            <Button className="h-11 rounded-[1rem]" disabled={selectedIndex <= 0} type="button" variant="outline" onClick={() => setSelectedMatchId(String(matches[selectedIndex - 1].matchId))}>Anterior</Button>
+            <p className="px-2 text-center text-xs font-black text-muted-foreground">{selectedIndex + 1}/{matches.length}</p>
+            <Button className="h-11 rounded-[1rem]" disabled={selectedIndex >= matches.length - 1} type="button" variant="outline" onClick={() => setSelectedMatchId(String(matches[selectedIndex + 1].matchId))}>Siguiente</Button>
+          </div>
+        </div>
+
+        <div className="hidden lg:grid lg:max-h-[70vh] lg:gap-2 lg:overflow-y-auto lg:pr-1">
+          {matches.map((match) => {
+            const isSelected = String(match.matchId) === String(selectedMatch.matchId);
+            const pendingCount = match.totalPlayers - match.votedCount;
+
+            return (
+              <button
+                key={String(match.matchId)}
+                className={cn(
+                  "rounded-[1rem] border px-3 py-3 text-left transition",
+                  isSelected ? "border-[#2A398D]/35 bg-[#2A398D]/10" : "border-border/70 bg-background/70 hover:border-[#2A398D]/25 hover:bg-background",
+                )}
+                type="button"
+                onClick={() => setSelectedMatchId(String(match.matchId))}
+              >
+                <p className="line-clamp-2 text-sm font-extrabold leading-5 text-foreground">{match.homeTeamName} vs {match.awayTeamName}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-muted-foreground">
+                  <span>{match.votedCount}/{match.totalPlayers} votaron</span>
+                  {pendingCount > 0 ? <span>Faltan {pendingCount}</span> : <span>Completo</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <VoteAuditCard match={selectedMatch} />
     </div>
   );
 }
