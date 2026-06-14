@@ -201,23 +201,23 @@ function ScoreManagerRoute() {
             const isSaving = savingMatchId === key;
 
             return (
-              <article key={key} className="rounded-[1.5rem] border border-[#2A398D]/14 bg-card/95 p-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.45)] sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+              <article key={key} className="rounded-[1.35rem] border border-[#2A398D]/14 bg-card/95 p-3 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.45)] sm:rounded-[1.5rem] sm:p-5">
+                <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-[0.68rem] font-black tracking-[0.2em] text-[#2A398D]/72 uppercase">{match.stageLabel}</p>
-                    <h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.04em] text-foreground">
+                    <h2 className="mt-1 text-balance font-display text-xl font-extrabold leading-tight tracking-[-0.04em] text-foreground sm:text-2xl">
                       {match.homeTeam.name} vs {match.awayTeam.name}
                     </h2>
                   </div>
-                  <span className="rounded-full bg-[#18a058]/12 px-3 py-1 text-xs font-black tracking-[0.14em] text-[#08783a] uppercase">En vivo</span>
+                  <span className="w-fit rounded-full bg-[#18a058]/12 px-3 py-1 text-xs font-black tracking-[0.14em] text-[#08783a] uppercase">En vivo</span>
                 </div>
-                <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+                <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end">
                   <ScoreBox
                     label={match.homeTeam.name}
                     value={draft.homeScore}
                     onChange={(value) => setDrafts((current) => ({ ...current, [key]: { ...draft, homeScore: value } }))}
                   />
-                  <span className="pb-3 text-sm font-black text-muted-foreground">vs</span>
+                  <span className="justify-self-center rounded-full bg-muted px-3 py-1 text-xs font-black tracking-[0.16em] text-muted-foreground uppercase sm:bg-transparent sm:px-0 sm:pb-3 sm:text-sm sm:tracking-normal sm:lowercase">vs</span>
                   <ScoreBox
                     label={match.awayTeam.name}
                     value={draft.awayScore}
@@ -225,8 +225,8 @@ function ScoreManagerRoute() {
                   />
                 </div>
                 <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                  <Button disabled={isSaving} type="button" variant="outline" onClick={() => void handleSave(match, "live")}>Guardar en vivo</Button>
-                  <Button disabled={isSaving} type="button" onClick={() => void handleSave(match, "finished")}>Finalizar partido</Button>
+                  <Button className="h-12 rounded-[1rem]" disabled={isSaving} type="button" variant="outline" onClick={() => void handleSave(match, "live")}>Guardar en vivo</Button>
+                  <Button className="h-12 rounded-[1rem]" disabled={isSaving} type="button" onClick={() => void handleSave(match, "finished")}>Finalizar partido</Button>
                 </div>
               </article>
             );
@@ -239,10 +239,10 @@ function ScoreManagerRoute() {
 
 function ScoreBox({ label, onChange, value }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <label className="grid gap-2">
-      <span className="line-clamp-1 text-sm font-bold text-foreground">{label}</span>
+    <label className="grid min-w-0 gap-2">
+      <span className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-foreground sm:min-h-0 sm:line-clamp-1">{label}</span>
       <input
-        className="h-16 rounded-[1.1rem] border border-border/80 bg-background px-3 text-center font-display text-3xl font-extrabold text-foreground shadow-inner outline-none focus:border-[#2A398D] focus:ring-2 focus:ring-[#2A398D]/20"
+        className="h-14 min-w-0 rounded-[1rem] border border-border/80 bg-background px-3 text-center font-display text-3xl font-extrabold text-foreground shadow-inner outline-none [appearance:textfield] focus:border-[#2A398D] focus:ring-2 focus:ring-[#2A398D]/20 sm:h-16 sm:rounded-[1.1rem] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         inputMode="numeric"
         min={0}
         type="number"
