@@ -46,6 +46,7 @@ lerna-debug.log*
 
 # Local sharing docs with player PINs
 docs/private/
+backups/
 
 # Testing
 coverage

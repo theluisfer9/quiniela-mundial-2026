@@ -158,4 +158,95 @@ describe("seedGroupStage", () => {
       "PIN access is not configured",
     );
   });
+
+  it("defines a flag emoji for every seeded team", () => {
+    expect(seededGroupStageTeams.filter((team) => !team.flagEmoji).map((team) => team.code)).toEqual([]);
+  });
+});
+
+describe("syncMatchResultsByNumber", () => {
+  const originalPinPepper = process.env.PIN_PEPPER;
+  const originalEnableSeedReset = process.env.ENABLE_SEED_RESET;
+  const originalEnableMatchResultSync = process.env.ENABLE_MATCH_RESULT_SYNC;
+
+  beforeEach(() => {
+    process.env.PIN_PEPPER = TEST_PEPPER;
+    process.env.ENABLE_SEED_RESET = "true";
+    process.env.ENABLE_MATCH_RESULT_SYNC = "true";
+  });
+
+  afterEach(() => {
+    if (originalPinPepper === undefined) delete process.env.PIN_PEPPER;
+    else process.env.PIN_PEPPER = originalPinPepper;
+
+    if (originalEnableSeedReset === undefined) delete process.env.ENABLE_SEED_RESET;
+    else process.env.ENABLE_SEED_RESET = originalEnableSeedReset;
+
+    if (originalEnableMatchResultSync === undefined) delete process.env.ENABLE_MATCH_RESULT_SYNC;
+    else process.env.ENABLE_MATCH_RESULT_SYNC = originalEnableMatchResultSync;
+  });
+
+  it("rejects unless sync is enabled server-side", async () => {
+    const t = createTest();
+    delete process.env.ENABLE_MATCH_RESULT_SYNC;
+
+    await expect(t.mutation(api.seed.syncMatchResultsByNumber, {
+      confirmSync: true,
+      results: [{ matchNumber: 1, status: "finished", homeScore: 2, awayScore: 0 }],
+    })).rejects.toThrow("Match result sync is not enabled");
+  });
+
+  it("updates match scores by match number", async () => {
+    const t = createTest();
+    await t.mutation(api.seed.seedGroupStage, { confirmReset: true });
+
+    const result = await t.mutation(api.seed.syncMatchResultsByNumber, {
+      confirmSync: true,
+      results: [{ matchNumber: 1, status: "finished", homeScore: 2, awayScore: 0 }],
+    });
+
+    const match = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("matches")
+        .filter((q) => q.eq(q.field("matchNumber"), 1))
+        .unique();
+    });
+
+    expect(result.updatedMatches).toBe(1);
+    expect(match).toMatchObject({ status: "finished", homeScore: 2n, awayScore: 0n });
+  });
+});
+
+describe("updateTeamWorldRankings", () => {
+  const originalEnableTeamRankingUpdate = process.env.ENABLE_TEAM_RANKING_UPDATE;
+
+  beforeEach(() => {
+    process.env.ENABLE_TEAM_RANKING_UPDATE = "true";
+  });
+
+  afterEach(() => {
+    if (originalEnableTeamRankingUpdate === undefined) delete process.env.ENABLE_TEAM_RANKING_UPDATE;
+    else process.env.ENABLE_TEAM_RANKING_UPDATE = originalEnableTeamRankingUpdate;
+  });
+
+  it("updates seeded team rankings and flags without reseeding matches", async () => {
+    const t = createTest();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("teams", { code: "ENG", name: "Inglaterra", groupCode: "L", worldRanking: 99 });
+    });
+
+    const result = await t.mutation(api.seed.updateTeamWorldRankings, { confirmUpdate: true });
+    const team = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("teams")
+        .withIndex("by_code", (q) => q.eq("code", "ENG"))
+        .unique();
+    });
+
+    expect(result.updatedTeams).toBe(1);
+    expect(team).toMatchObject({
+      worldRanking: 4,
+      flagEmoji: seededGroupStageTeams.find((seededTeam) => seededTeam.code === "ENG")?.flagEmoji,
+    });
+  });
 });

@@ -4,23 +4,34 @@ import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { CalendarDays, ListOrdered } from "lucide-react";
+import { CalendarDays, GitBranch, ListOrdered } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import {
   buildCalendarDaySections,
   buildGroupStandings,
+  getDefaultCalendarDayKey,
+  getSelectedCalendarDaySection,
+  getSelectedGroupStanding,
   type CalendarMatch,
   type GroupStanding,
 } from "@/lib/calendar-groups";
 import { useI18n } from "@/lib/i18n";
+import {
+  KNOCKOUT_MATCHES,
+  KNOCKOUT_ROUND_LABELS,
+  KNOCKOUT_ROUNDS,
+  resolveKnockoutRound,
+  type ResolvedKnockoutSlot,
+  type KnockoutRound,
+} from "@/lib/knockout-bracket";
 import { localizeStageLabel, localizeTeamName } from "@/lib/team-i18n";
 
 export const Route = createFileRoute("/calendario")({
   component: CalendarRoute,
 });
 
-type CalendarTab = "schedule" | "groups";
+type CalendarTab = "schedule" | "groups" | "knockout";
 
 type CalendarData = {
   matches: CalendarMatch[];
@@ -42,12 +53,15 @@ function CalendarRoute() {
         description={t.calendar.description}
         className="border-primary/15 bg-card/98"
       >
-        <div className="grid grid-cols-2 gap-2 rounded-[1.15rem] bg-muted p-1">
+        <div className="grid grid-cols-3 gap-2 rounded-[1.15rem] bg-muted p-1">
           <CalendarTabButton active={activeTab === "schedule"} icon={<CalendarDays className="size-4" />} onClick={() => setActiveTab("schedule")}>
             {t.calendar.scheduleTab}
           </CalendarTabButton>
           <CalendarTabButton active={activeTab === "groups"} icon={<ListOrdered className="size-4" />} onClick={() => setActiveTab("groups")}>
             {t.calendar.groupsTab}
+          </CalendarTabButton>
+          <CalendarTabButton active={activeTab === "knockout"} icon={<GitBranch className="size-4" />} onClick={() => setActiveTab("knockout")}>
+            Eliminatorias
           </CalendarTabButton>
         </div>
       </AppSection>
@@ -62,9 +76,89 @@ function CalendarRoute() {
         </AppSection>
       ) : activeTab === "schedule" ? (
         <ScheduleTab daySections={daySections} />
-      ) : (
+      ) : activeTab === "groups" ? (
         <GroupsTab groups={groups} matches={matches} />
+      ) : (
+        <KnockoutTab groups={groups} />
       )}
+    </div>
+  );
+}
+
+function KnockoutTab({ groups }: { groups: GroupStanding[] }) {
+  const [activeRound, setActiveRound] = useState<KnockoutRound>("round-of-32");
+  const roundMatches = resolveKnockoutRound(KNOCKOUT_MATCHES.filter((match) => match.round === activeRound), groups);
+
+  return (
+    <div className="grid gap-4">
+      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
+        {KNOCKOUT_ROUNDS.map((round) => {
+          const isActive = round === activeRound;
+
+          return (
+            <button
+              key={round}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-2 text-sm font-black transition",
+                isActive
+                  ? "border-primary bg-primary text-primary-foreground shadow-[0_14px_26px_-20px_rgba(189,0,21,0.9)]"
+                  : "border-border/70 bg-card text-muted-foreground hover:text-foreground",
+              )}
+              type="button"
+              onClick={() => setActiveRound(round)}
+            >
+              {KNOCKOUT_ROUND_LABELS[round]}
+            </button>
+          );
+        })}
+      </div>
+      <AppSection
+        eyebrow="Eliminatorias"
+        title={KNOCKOUT_ROUND_LABELS[activeRound]}
+        description="Cruces calculados desde la tabla actual de grupos."
+        className="border-primary/15 bg-card/98"
+      >
+        <div className="grid gap-3 lg:grid-cols-2">
+          {roundMatches.map((match) => (
+            <KnockoutMatchCard key={match.id} away={match.away} city={match.city} dateLabel={match.dateLabel} home={match.home} id={match.id} />
+          ))}
+        </div>
+      </AppSection>
+    </div>
+  );
+}
+
+function KnockoutMatchCard({ away, city, dateLabel, home, id }: {
+  away: ResolvedKnockoutSlot;
+  city: string;
+  dateLabel: string;
+  home: ResolvedKnockoutSlot;
+  id: string;
+}) {
+  return (
+    <article className="rounded-[1.25rem] border border-border/70 bg-background/85 p-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.68rem] font-black tracking-[0.18em] text-primary uppercase">{id.toUpperCase()}</p>
+          <p className="mt-1 text-sm font-semibold text-muted-foreground">{dateLabel} · {city}</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 rounded-[1rem] border border-border/60 bg-card/70 p-3">
+        <KnockoutTeamLine resolved={home} />
+        <KnockoutTeamLine resolved={away} />
+      </div>
+    </article>
+  );
+}
+
+function KnockoutTeamLine({ resolved }: { resolved: ResolvedKnockoutSlot }) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3">
+      <div className="min-w-0 flex items-center gap-2">
+        {resolved.team?.flagEmoji ? <span className="text-xl">{resolved.team.flagEmoji}</span> : <span className="text-xl text-muted-foreground">-</span>}
+        <span className="truncate font-bold text-foreground">{resolved.team?.teamName ?? resolved.label}</span>
+      </div>
+      <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[0.65rem] font-black text-muted-foreground uppercase">{resolved.label}</span>
     </div>
   );
 }
@@ -87,56 +181,145 @@ function CalendarTabButton({ active, children, icon, onClick }: { active: boolea
 
 function ScheduleTab({ daySections }: { daySections: ReturnType<typeof buildCalendarDaySections> }) {
   const { dateLocale } = useI18n();
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(() => getDefaultCalendarDayKey(daySections));
+  const selectedSection = getSelectedCalendarDaySection(daySections, selectedDayKey);
   const dayFormatter = new Intl.DateTimeFormat(dateLocale, {
     weekday: "long",
     day: "numeric",
     month: "long",
     timeZone: "America/Guatemala",
   });
+  const chipFormatter = new Intl.DateTimeFormat(dateLocale, {
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Guatemala",
+  });
+
+  if (!selectedSection) {
+    return null;
+  }
 
   return (
     <div className="grid gap-4">
-      {daySections.map((section) => (
-        <AppSection
-          key={section.dayKey}
-          eyebrow={section.dayKey}
-          title={capitalize(dayFormatter.format(new Date(section.kickoffAt)))}
-          description={`${section.matches.length} partido${section.matches.length === 1 ? "" : "s"}`}
-          className="border-primary/15 bg-card/98"
-        >
-          <div className="grid gap-3 lg:grid-cols-2">
-            {section.matches.map((match) => <CalendarMatchCard key={match.matchId} match={match} />)}
-          </div>
-        </AppSection>
-      ))}
+      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
+        {daySections.map((section) => {
+          const isActive = section.dayKey === selectedSection.dayKey;
+
+          return (
+            <button
+              key={section.dayKey}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-2 text-sm font-black transition",
+                isActive
+                  ? "border-primary bg-primary text-primary-foreground shadow-[0_14px_26px_-20px_rgba(189,0,21,0.9)]"
+                  : "border-border/70 bg-card text-muted-foreground hover:text-foreground",
+              )}
+              type="button"
+              onClick={() => setSelectedDayKey(section.dayKey)}
+            >
+              {capitalize(chipFormatter.format(new Date(section.kickoffAt)))} · {section.matches.length}
+            </button>
+          );
+        })}
+      </div>
+      <AppSection
+        eyebrow={selectedSection.dayKey}
+        title={capitalize(dayFormatter.format(new Date(selectedSection.kickoffAt)))}
+        description={`${selectedSection.matches.length} partido${selectedSection.matches.length === 1 ? "" : "s"}`}
+        className="border-primary/15 bg-card/98"
+      >
+        <div className="grid gap-3 lg:grid-cols-2">
+          {selectedSection.matches.map((match) => <CalendarMatchCard key={match.matchId} match={match} />)}
+        </div>
+      </AppSection>
     </div>
   );
 }
 
 function GroupsTab({ groups, matches }: { groups: GroupStanding[]; matches: CalendarMatch[] }) {
-  const { t } = useI18n();
+  const { dateLocale, t } = useI18n();
+  const [selectedGroupCode, setSelectedGroupCode] = useState<string | null>(null);
+  const [selectedFixtureDayKey, setSelectedFixtureDayKey] = useState<string | null>(null);
+  const selectedGroup = getSelectedGroupStanding(groups, selectedGroupCode);
   const matchesByGroup = new Map<string, CalendarMatch[]>();
   for (const match of matches) {
     const groupCode = match.groupCode ?? match.homeTeam.groupCode ?? match.awayTeam.groupCode ?? "?";
     matchesByGroup.set(groupCode, [...(matchesByGroup.get(groupCode) ?? []), match]);
   }
+  const selectedGroupMatches = selectedGroup ? (matchesByGroup.get(selectedGroup.groupCode) ?? []) : [];
+  const fixtureDaySections = buildCalendarDaySections(selectedGroupMatches);
+  const selectedFixtureSection = getSelectedCalendarDaySection(fixtureDaySections, selectedFixtureDayKey);
+  const chipFormatter = new Intl.DateTimeFormat(dateLocale, {
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Guatemala",
+  });
+
+  if (!selectedGroup) {
+    return null;
+  }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      {groups.map((group) => (
-        <AppSection
-          key={group.groupCode}
-          eyebrow={`Grupo ${group.groupCode}`}
-          title={`Grupo ${group.groupCode}`}
-          description={t.calendar.fixtures}
-          className="border-primary/15 bg-card/98"
-        >
-          <GroupTable group={group} />
-          <div className="grid gap-2">
-            {(matchesByGroup.get(group.groupCode) ?? []).map((match) => <CompactFixture key={match.matchId} match={match} />)}
+    <div className="grid gap-4">
+      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-6 sm:px-0 lg:grid-cols-12">
+        {groups.map((group) => {
+          const isActive = group.groupCode === selectedGroup.groupCode;
+
+          return (
+            <button
+              key={group.groupCode}
+              className={cn(
+                "min-h-10 shrink-0 rounded-full border px-4 text-sm font-black transition sm:rounded-[0.9rem]",
+                isActive
+                  ? "border-[#2A398D] bg-[#2A398D] text-white shadow-[0_14px_26px_-20px_rgba(42,57,141,0.9)]"
+                  : "border-border/70 bg-card text-muted-foreground hover:text-foreground",
+              )}
+              type="button"
+              onClick={() => setSelectedGroupCode(group.groupCode)}
+            >
+              {group.groupCode}
+            </button>
+          );
+        })}
+      </div>
+      <AppSection
+        eyebrow={`Grupo ${selectedGroup.groupCode}`}
+        title={`Grupo ${selectedGroup.groupCode}`}
+        description={t.calendar.fixtures}
+        className="min-w-0 border-primary/15 bg-card/98"
+      >
+        <GroupTable group={selectedGroup} />
+        {selectedFixtureSection ? (
+          <div className="grid gap-3">
+            {fixtureDaySections.length > 1 ? (
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {fixtureDaySections.map((section) => {
+                  const isActive = section.dayKey === selectedFixtureSection.dayKey;
+
+                  return (
+                    <button
+                      key={section.dayKey}
+                      className={cn(
+                        "shrink-0 rounded-full border px-3 py-1.5 text-xs font-black transition",
+                        isActive
+                          ? "border-[#2A398D] bg-[#2A398D] text-white shadow-[0_14px_26px_-20px_rgba(42,57,141,0.9)]"
+                          : "border-border/70 bg-background text-muted-foreground hover:text-foreground",
+                      )}
+                      type="button"
+                      onClick={() => setSelectedFixtureDayKey(section.dayKey)}
+                    >
+                      {capitalize(chipFormatter.format(new Date(section.kickoffAt)))} · {section.matches.length}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <div className="grid gap-2">
+              {selectedFixtureSection.matches.map((match) => <CompactFixture key={match.matchId} match={match} />)}
+            </div>
           </div>
-        </AppSection>
-      ))}
+        ) : null}
+      </AppSection>
     </div>
   );
 }
@@ -145,7 +328,7 @@ function GroupTable({ group }: { group: GroupStanding }) {
   const { t } = useI18n();
 
   return (
-    <div className="overflow-x-auto rounded-[1.2rem] border border-border/70 bg-background/80">
+    <div className="max-w-full overflow-x-auto rounded-[1.2rem] border border-border/70 bg-background/80">
       <table className="w-full min-w-[34rem] border-collapse text-sm">
         <thead>
           <tr className="border-b border-border/70 text-[0.68rem] font-black tracking-[0.14em] text-muted-foreground uppercase">

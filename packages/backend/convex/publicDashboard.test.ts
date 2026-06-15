@@ -22,10 +22,10 @@ function createTest() {
 
 async function seedTeams(t: TestInstance) {
   return await t.run(async (ctx) => {
-    const argentinaId = await ctx.db.insert("teams", { code: "ARG", name: "Argentina", flagEmoji: "ARG", groupCode: "A" });
-    const brazilId = await ctx.db.insert("teams", { code: "BRA", name: "Brazil", flagEmoji: "BRA", groupCode: "A" });
-    const mexicoId = await ctx.db.insert("teams", { code: "MEX", name: "Mexico", flagEmoji: "MEX", groupCode: "B" });
-    const canadaId = await ctx.db.insert("teams", { code: "CAN", name: "Canada", flagEmoji: "CAN", groupCode: "B" });
+    const argentinaId = await ctx.db.insert("teams", { code: "ARG", name: "Argentina", flagEmoji: "ARG", groupCode: "A", worldRanking: 1 });
+    const brazilId = await ctx.db.insert("teams", { code: "BRA", name: "Brazil", flagEmoji: "BRA", groupCode: "A", worldRanking: 6 });
+    const mexicoId = await ctx.db.insert("teams", { code: "MEX", name: "Mexico", flagEmoji: "MEX", groupCode: "B", worldRanking: 13 });
+    const canadaId = await ctx.db.insert("teams", { code: "CAN", name: "Canada", flagEmoji: "CAN", groupCode: "B", worldRanking: 32 });
 
     return { argentinaId, brazilId, mexicoId, canadaId };
   });
@@ -241,8 +241,8 @@ describe("public dashboard", () => {
     const live = calendar.matches.find((match: { matchId: string }) => match.matchId === ids.todayLiveId);
     expect(scheduled).toMatchObject({
       groupCode: "B",
-      homeTeam: { groupCode: "B", name: "México" },
-      awayTeam: { groupCode: "B", name: "Canadá" },
+      homeTeam: { groupCode: "B", name: "México", worldRanking: 13 },
+      awayTeam: { groupCode: "B", name: "Canadá", worldRanking: 32 },
       status: "scheduled",
     });
     expect(scheduled).not.toHaveProperty("homeScore");

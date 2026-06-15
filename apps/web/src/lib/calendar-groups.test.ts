@@ -1,6 +1,13 @@
 import { describe, expect, it } from "bun:test";
 
-import { buildCalendarDaySections, buildGroupStandings, type CalendarMatch } from "./calendar-groups";
+import {
+  buildCalendarDaySections,
+  buildGroupStandings,
+  getDefaultCalendarDayKey,
+  getSelectedCalendarDaySection,
+  getSelectedGroupStanding,
+  type CalendarMatch,
+} from "./calendar-groups";
 
 const TEAM_MEX = { id: "mex", code: "MEX", name: "Mexico", groupCode: "A" };
 const TEAM_RSA = { id: "rsa", code: "RSA", name: "South Africa", groupCode: "A" };
@@ -34,6 +41,26 @@ describe("buildCalendarDaySections", () => {
       { dayKey: "2026-06-13", matchIds: ["third"] },
     ]);
   });
+
+  it("selects one day section with first day fallback", () => {
+    const sections = buildCalendarDaySections([
+      match({ matchId: "first", kickoffAt: new Date("2026-06-12T15:00:00.000Z").getTime() }),
+      match({ matchId: "second", kickoffAt: new Date("2026-06-13T19:00:00.000Z").getTime() }),
+    ]);
+
+    expect(getSelectedCalendarDaySection(sections, "2026-06-13")?.matches.map((row) => row.matchId)).toEqual(["second"]);
+    expect(getSelectedCalendarDaySection(sections, "missing")?.matches.map((row) => row.matchId)).toEqual(["first"]);
+  });
+
+  it("uses the current Guatemala day as default when it exists", () => {
+    const sections = buildCalendarDaySections([
+      match({ matchId: "first", kickoffAt: new Date("2026-06-12T15:00:00.000Z").getTime() }),
+      match({ matchId: "today", kickoffAt: new Date("2026-06-15T19:00:00.000Z").getTime() }),
+      match({ matchId: "later", kickoffAt: new Date("2026-06-16T19:00:00.000Z").getTime() }),
+    ]);
+
+    expect(getDefaultCalendarDayKey(sections, new Date("2026-06-15T20:00:00.000Z").getTime())).toBe("2026-06-15");
+  });
 });
 
 describe("buildGroupStandings", () => {
@@ -55,5 +82,40 @@ describe("buildGroupStandings", () => {
         ],
       },
     ]);
+  });
+
+  it("selects one group table with first group fallback", () => {
+    const groupA = match({ matchId: "a", groupCode: "A", homeTeam: TEAM_MEX, awayTeam: TEAM_RSA });
+    const groupB = match({
+      matchId: "b",
+      groupCode: "B",
+      homeTeam: { id: "usa", code: "USA", name: "United States", groupCode: "B" },
+      awayTeam: { id: "par", code: "PAR", name: "Paraguay", groupCode: "B" },
+    });
+    const standings = buildGroupStandings([groupB, groupA]);
+
+    expect(getSelectedGroupStanding(standings, "B")?.groupCode).toBe("B");
+    expect(getSelectedGroupStanding(standings, "missing")?.groupCode).toBe("A");
+  });
+
+  it("uses FIFA ranking before team name when group rows are otherwise tied", () => {
+    const standings = buildGroupStandings([
+      match({
+        matchId: "tie-1",
+        homeTeam: { id: "eng", code: "ENG", name: "England", groupCode: "L", worldRanking: 4 },
+        awayTeam: { id: "cro", code: "CRO", name: "Croatia", groupCode: "L", worldRanking: 11 },
+        groupCode: "L",
+        status: "scheduled",
+      }),
+      match({
+        matchId: "tie-2",
+        homeTeam: { id: "gha", code: "GHA", name: "Ghana", groupCode: "L", worldRanking: 72 },
+        awayTeam: { id: "pan", code: "PAN", name: "Panama", groupCode: "L", worldRanking: 34 },
+        groupCode: "L",
+        status: "scheduled",
+      }),
+    ]);
+
+    expect(standings[0]?.rows.map((row) => row.teamCode)).toEqual(["ENG", "CRO", "PAN", "GHA"]);
   });
 });

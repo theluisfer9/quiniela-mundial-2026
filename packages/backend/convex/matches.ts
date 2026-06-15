@@ -21,6 +21,7 @@ const calendarTeamSummary = v.object({
   name: v.string(),
   flagEmoji: v.optional(v.string()),
   groupCode: v.optional(v.string()),
+  worldRanking: v.optional(v.number()),
 });
 
 const homeMatchSummary = v.object({
@@ -198,8 +199,8 @@ function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">
     matchNumber?: number;
     venue?: string;
     status: "scheduled" | "live" | "finished";
-    homeTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string; groupCode?: string };
-    awayTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string; groupCode?: string };
+    homeTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string; groupCode?: string; worldRanking?: number };
+    awayTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string; groupCode?: string; worldRanking?: number };
     homeScore?: number;
     awayScore?: number;
   } = {
@@ -216,6 +217,7 @@ function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">
       name: getSpanishTeamName(homeTeam.code, homeTeam.name),
       flagEmoji: homeTeam.flagEmoji,
       groupCode: homeTeam.groupCode,
+      worldRanking: homeTeam.worldRanking,
     },
     awayTeam: {
       id: awayTeam._id,
@@ -223,6 +225,7 @@ function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">
       name: getSpanishTeamName(awayTeam.code, awayTeam.name),
       flagEmoji: awayTeam.flagEmoji,
       groupCode: awayTeam.groupCode,
+      worldRanking: awayTeam.worldRanking,
     },
   };
 

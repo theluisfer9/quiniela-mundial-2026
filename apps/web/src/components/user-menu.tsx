@@ -11,7 +11,7 @@ import {
 } from "@quiniela-mundial-2026/ui/components/dropdown-menu";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { BarChart3, BookOpenText, ChevronDown, ClipboardList, Home, LogOut, UserRound } from "lucide-react";
+import { BarChart3, BookOpenText, CalendarDays, ChevronDown, ClipboardList, Home, LogOut, UserRound } from "lucide-react";
 import { useState } from "react";
 
 import { AUTH_ENTRY_PATH } from "@/lib/navigation";
@@ -105,6 +105,10 @@ export default function UserMenu({ playerSession, onPlayerSessionCleared }: User
           <DropdownMenuItem render={<Link to="/dashboard" />} className="rounded-[1rem] sm:hidden">
             <BarChart3 className="size-4" />
             {t.common.dashboard}
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link to="/calendario" />} className="rounded-[1rem] sm:hidden">
+            <CalendarDays className="size-4" />
+            {t.common.calendar}
           </DropdownMenuItem>
           <DropdownMenuItem render={<Link to="/manual" />} className="rounded-[1rem] sm:hidden">
             <BookOpenText className="size-4" />

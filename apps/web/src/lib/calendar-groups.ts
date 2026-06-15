@@ -2,6 +2,7 @@ import type { HomeTeamSummary } from "./home-data";
 
 export type CalendarTeamSummary = HomeTeamSummary & {
   groupCode?: string;
+  worldRanking?: number;
 };
 
 export type CalendarMatch = {
@@ -28,6 +29,8 @@ export type GroupStandingRow = {
   teamCode: string;
   teamName: string;
   flagEmoji?: string;
+  groupCode: string;
+  worldRanking?: number;
   played: number;
   won: number;
   drawn: number;
@@ -42,6 +45,19 @@ export type GroupStanding = {
   groupCode: string;
   rows: GroupStandingRow[];
 };
+
+export function getSelectedCalendarDaySection(sections: CalendarDaySection[], selectedDayKey: string | null) {
+  return sections.find((section) => section.dayKey === selectedDayKey) ?? sections[0] ?? null;
+}
+
+export function getDefaultCalendarDayKey(sections: CalendarDaySection[], now = Date.now()) {
+  const todayKey = getGuatemalaDayKey(now);
+  return sections.some((section) => section.dayKey === todayKey) ? todayKey : (sections[0]?.dayKey ?? null);
+}
+
+export function getSelectedGroupStanding(groups: GroupStanding[], selectedGroupCode: string | null) {
+  return groups.find((group) => group.groupCode === selectedGroupCode) ?? groups[0] ?? null;
+}
 
 function getGuatemalaDayKey(timestamp: number) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -81,6 +97,8 @@ function ensureTeam(rowsByCode: Map<string, GroupStandingRow>, team: CalendarTea
     teamCode: team.code,
     teamName: team.name,
     flagEmoji: team.flagEmoji,
+    groupCode: team.groupCode ?? "?",
+    worldRanking: team.worldRanking,
     played: 0,
     won: 0,
     drawn: 0,
@@ -142,6 +160,7 @@ export function buildGroupStandings(matches: CalendarMatch[]): GroupStanding[] {
         right.points - left.points ||
         right.goalDifference - left.goalDifference ||
         right.goalsFor - left.goalsFor ||
+        (left.worldRanking ?? Number.POSITIVE_INFINITY) - (right.worldRanking ?? Number.POSITIVE_INFINITY) ||
         left.teamName.localeCompare(right.teamName)
       ),
     }));

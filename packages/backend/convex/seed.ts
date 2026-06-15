@@ -190,3 +190,79 @@ export const rotatePlayerPins = mutation({
     };
   },
 });
+
+export const updateTeamWorldRankings = mutation({
+  args: {
+    confirmUpdate: v.boolean(),
+  },
+  returns: v.object({
+    updatedTeams: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    if (!args.confirmUpdate) {
+      throw new ConvexError("confirmUpdate must be true");
+    }
+    if (process.env.ENABLE_TEAM_RANKING_UPDATE !== "true") {
+      throw new ConvexError("Team ranking update is not enabled");
+    }
+
+    let updatedTeams = 0;
+    for (const seededTeam of seededGroupStageTeams) {
+      const team = await ctx.db
+        .query("teams")
+        .withIndex("by_code", (q) => q.eq("code", seededTeam.code))
+        .unique();
+      if (!team || (team.worldRanking === seededTeam.worldRanking && team.flagEmoji === seededTeam.flagEmoji)) {
+        continue;
+      }
+
+      await ctx.db.patch(team._id, { worldRanking: seededTeam.worldRanking, flagEmoji: seededTeam.flagEmoji });
+      updatedTeams += 1;
+    }
+
+    return { updatedTeams };
+  },
+});
+
+export const syncMatchResultsByNumber = mutation({
+  args: {
+    confirmSync: v.boolean(),
+    results: v.array(v.object({
+      matchNumber: v.number(),
+      status: v.union(v.literal("live"), v.literal("finished")),
+      homeScore: v.number(),
+      awayScore: v.number(),
+    })),
+  },
+  returns: v.object({
+    updatedMatches: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    if (!args.confirmSync) {
+      throw new ConvexError("confirmSync must be true");
+    }
+    if (process.env.ENABLE_MATCH_RESULT_SYNC !== "true") {
+      throw new ConvexError("Match result sync is not enabled");
+    }
+
+    let updatedMatches = 0;
+    for (const result of args.results) {
+      const matches = await ctx.db
+        .query("matches")
+        .filter((q) => q.eq(q.field("matchNumber"), result.matchNumber))
+        .collect();
+      if (matches.length !== 1) {
+        throw new ConvexError(`Expected exactly one match with number ${result.matchNumber}`);
+      }
+
+      await ctx.db.patch(matches[0]._id, {
+        status: result.status,
+        homeScore: BigInt(result.homeScore),
+        awayScore: BigInt(result.awayScore),
+      });
+      updatedMatches += 1;
+    }
+
+    return { updatedMatches };
+  },
+});
