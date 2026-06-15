@@ -22,10 +22,10 @@ function createTest() {
 
 async function seedTeams(t: TestInstance) {
   return await t.run(async (ctx) => {
-    const argentinaId = await ctx.db.insert("teams", { code: "ARG", name: "Argentina", flagEmoji: "ARG" });
-    const brazilId = await ctx.db.insert("teams", { code: "BRA", name: "Brazil", flagEmoji: "BRA" });
-    const mexicoId = await ctx.db.insert("teams", { code: "MEX", name: "Mexico", flagEmoji: "MEX" });
-    const canadaId = await ctx.db.insert("teams", { code: "CAN", name: "Canada", flagEmoji: "CAN" });
+    const argentinaId = await ctx.db.insert("teams", { code: "ARG", name: "Argentina", flagEmoji: "ARG", groupCode: "A" });
+    const brazilId = await ctx.db.insert("teams", { code: "BRA", name: "Brazil", flagEmoji: "BRA", groupCode: "A" });
+    const mexicoId = await ctx.db.insert("teams", { code: "MEX", name: "Mexico", flagEmoji: "MEX", groupCode: "B" });
+    const canadaId = await ctx.db.insert("teams", { code: "CAN", name: "Canada", flagEmoji: "CAN", groupCode: "B" });
 
     return { argentinaId, brazilId, mexicoId, canadaId };
   });
@@ -228,6 +228,26 @@ describe("public dashboard", () => {
       totalPredictionCountForFinishedMatches: 5,
       bestExactScoreCount: 3,
     });
+  });
+
+  it("returns public calendar rows with group metadata and safe scheduled scores", async () => {
+    const t = createTest();
+    const ids = await seedPublicDashboardData(t);
+
+    const calendar = await t.query(api.matches.getPublicCalendar, {});
+
+    expect(calendar.matches.map((match: { matchId: string }) => match.matchId)).toContain(ids.todayScheduledId);
+    const scheduled = calendar.matches.find((match: { matchId: string }) => match.matchId === ids.todayScheduledId);
+    const live = calendar.matches.find((match: { matchId: string }) => match.matchId === ids.todayLiveId);
+    expect(scheduled).toMatchObject({
+      groupCode: "B",
+      homeTeam: { groupCode: "B", name: "México" },
+      awayTeam: { groupCode: "B", name: "Canadá" },
+      status: "scheduled",
+    });
+    expect(scheduled).not.toHaveProperty("homeScore");
+    expect(scheduled).not.toHaveProperty("awayScore");
+    expect(live).toMatchObject({ homeScore: 1, awayScore: 0, status: "live" });
   });
 
   it("returns public standings with all rows marked as not current user", async () => {

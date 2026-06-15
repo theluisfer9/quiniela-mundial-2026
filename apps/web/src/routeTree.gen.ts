@@ -13,6 +13,7 @@ import { Route as PronosticosRouteImport } from './routes/pronosticos'
 import { Route as MarcadoresRouteImport } from './routes/marcadores'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CalendarioRouteImport } from './routes/calendario'
 import { Route as IndexRouteImport } from './routes/index'
 
 const PronosticosRoute = PronosticosRouteImport.update({
@@ -35,6 +36,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarioRoute = CalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calendario': typeof CalendarioRoute
   '/dashboard': typeof DashboardRoute
   '/manual': typeof ManualRoute
   '/marcadores': typeof MarcadoresRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calendario': typeof CalendarioRoute
   '/dashboard': typeof DashboardRoute
   '/manual': typeof ManualRoute
   '/marcadores': typeof MarcadoresRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calendario': typeof CalendarioRoute
   '/dashboard': typeof DashboardRoute
   '/manual': typeof ManualRoute
   '/marcadores': typeof MarcadoresRoute
@@ -65,12 +74,25 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/manual' | '/marcadores' | '/pronosticos'
+  fullPaths:
+    | '/'
+    | '/calendario'
+    | '/dashboard'
+    | '/manual'
+    | '/marcadores'
+    | '/pronosticos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/manual' | '/marcadores' | '/pronosticos'
+  to:
+    | '/'
+    | '/calendario'
+    | '/dashboard'
+    | '/manual'
+    | '/marcadores'
+    | '/pronosticos'
   id:
     | '__root__'
     | '/'
+    | '/calendario'
     | '/dashboard'
     | '/manual'
     | '/marcadores'
@@ -79,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalendarioRoute: typeof CalendarioRoute
   DashboardRoute: typeof DashboardRoute
   ManualRoute: typeof ManualRoute
   MarcadoresRoute: typeof MarcadoresRoute
@@ -115,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendario': {
+      id: '/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof CalendarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -127,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarioRoute: CalendarioRoute,
   DashboardRoute: DashboardRoute,
   ManualRoute: ManualRoute,
   MarcadoresRoute: MarcadoresRoute,

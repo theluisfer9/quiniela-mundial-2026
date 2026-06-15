@@ -13,7 +13,7 @@ describe("navigation", () => {
     expect(PRIMARY_NAV_ITEMS).toEqual([
       { to: "/", hash: undefined, label: "Inicio", labelKey: "home" },
       { to: "/dashboard", hash: undefined, label: "Tablero", labelKey: "dashboard" },
-      { to: "/manual", hash: undefined, label: "Manual", labelKey: "manual" },
+      { to: "/calendario", hash: undefined, label: "Calendario", labelKey: "calendar" },
     ]);
   });
 

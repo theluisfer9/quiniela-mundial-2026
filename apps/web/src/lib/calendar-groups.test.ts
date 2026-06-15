@@ -1,0 +1,59 @@
+import { describe, expect, it } from "bun:test";
+
+import { buildCalendarDaySections, buildGroupStandings, type CalendarMatch } from "./calendar-groups";
+
+const TEAM_MEX = { id: "mex", code: "MEX", name: "Mexico", groupCode: "A" };
+const TEAM_RSA = { id: "rsa", code: "RSA", name: "South Africa", groupCode: "A" };
+const TEAM_KOR = { id: "kor", code: "KOR", name: "South Korea", groupCode: "A" };
+const TEAM_CZE = { id: "cze", code: "CZE", name: "Czech Republic", groupCode: "A" };
+
+function match(overrides: Partial<CalendarMatch> = {}): CalendarMatch {
+  return {
+    matchId: "match-1",
+    kickoffAt: new Date("2026-06-12T18:00:00.000Z").getTime(),
+    stageLabel: "Grupo A",
+    groupCode: "A",
+    status: "scheduled",
+    homeTeam: TEAM_MEX,
+    awayTeam: TEAM_RSA,
+    ...overrides,
+  };
+}
+
+describe("buildCalendarDaySections", () => {
+  it("groups matches by Guatemala day in kickoff order", () => {
+    const first = match({ matchId: "first", kickoffAt: new Date("2026-06-12T15:00:00.000Z").getTime() });
+    const second = match({ matchId: "second", kickoffAt: new Date("2026-06-13T02:00:00.000Z").getTime() });
+    const third = match({ matchId: "third", kickoffAt: new Date("2026-06-13T19:00:00.000Z").getTime() });
+
+    expect(buildCalendarDaySections([third, second, first]).map((section) => ({
+      dayKey: section.dayKey,
+      matchIds: section.matches.map((row) => row.matchId),
+    }))).toEqual([
+      { dayKey: "2026-06-12", matchIds: ["first", "second"] },
+      { dayKey: "2026-06-13", matchIds: ["third"] },
+    ]);
+  });
+});
+
+describe("buildGroupStandings", () => {
+  it("calculates group table from finished and live scores", () => {
+    const standings = buildGroupStandings([
+      match({ matchId: "mex-rsa", homeTeam: TEAM_MEX, awayTeam: TEAM_RSA, status: "finished", homeScore: 2, awayScore: 0 }),
+      match({ matchId: "kor-cze", homeTeam: TEAM_KOR, awayTeam: TEAM_CZE, status: "live", homeScore: 1, awayScore: 1 }),
+      match({ matchId: "scheduled", homeTeam: TEAM_MEX, awayTeam: TEAM_KOR, status: "scheduled" }),
+    ]);
+
+    expect(standings).toMatchObject([
+      {
+        groupCode: "A",
+        rows: [
+          { teamCode: "MEX", points: 3, played: 1, won: 1, drawn: 0, lost: 0, goalsFor: 2, goalsAgainst: 0, goalDifference: 2 },
+          { teamCode: "CZE", points: 1, played: 1, won: 0, drawn: 1, lost: 0, goalsFor: 1, goalsAgainst: 1, goalDifference: 0 },
+          { teamCode: "KOR", points: 1, played: 1, won: 0, drawn: 1, lost: 0, goalsFor: 1, goalsAgainst: 1, goalDifference: 0 },
+          { teamCode: "RSA", points: 0, played: 1, won: 0, drawn: 0, lost: 1, goalsFor: 0, goalsAgainst: 2, goalDifference: -2 },
+        ],
+      },
+    ]);
+  });
+});

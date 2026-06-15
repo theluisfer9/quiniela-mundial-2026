@@ -15,6 +15,14 @@ const teamSummary = v.object({
   flagEmoji: v.optional(v.string()),
 });
 
+const calendarTeamSummary = v.object({
+  id: v.id("teams"),
+  code: v.string(),
+  name: v.string(),
+  flagEmoji: v.optional(v.string()),
+  groupCode: v.optional(v.string()),
+});
+
 const homeMatchSummary = v.object({
   matchId: v.id("matches"),
   kickoffAt: v.number(),
@@ -62,6 +70,24 @@ const publicDashboardResult = v.object({
     totalPredictionCountForFinishedMatches: v.number(),
     bestExactScoreCount: v.number(),
   }),
+});
+
+const publicCalendarMatch = v.object({
+  matchId: v.id("matches"),
+  kickoffAt: v.number(),
+  stageLabel: v.string(),
+  groupCode: v.union(v.string(), v.null()),
+  matchNumber: v.optional(v.number()),
+  venue: v.optional(v.string()),
+  status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
+  homeTeam: calendarTeamSummary,
+  awayTeam: calendarTeamSummary,
+  homeScore: v.optional(v.number()),
+  awayScore: v.optional(v.number()),
+});
+
+const publicCalendarResult = v.object({
+  matches: v.array(publicCalendarMatch),
 });
 
 const manageableMatchesResult = v.object({
@@ -146,6 +172,57 @@ function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, 
       code: awayTeam.code,
       name: getSpanishTeamName(awayTeam.code, awayTeam.name),
       flagEmoji: awayTeam.flagEmoji,
+    },
+  };
+
+  if (isScoredMatch(match)) {
+    summary.homeScore = normalizeSoccerScore(match.homeScore);
+    summary.awayScore = normalizeSoccerScore(match.awayScore);
+  }
+
+  return summary;
+}
+
+function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, Doc<"teams">>) {
+  const homeTeam = teamById.get(match.homeTeamId);
+  const awayTeam = teamById.get(match.awayTeamId);
+  if (!homeTeam || !awayTeam) {
+    return null;
+  }
+
+  const summary: {
+    matchId: Id<"matches">;
+    kickoffAt: number;
+    stageLabel: string;
+    groupCode: string | null;
+    matchNumber?: number;
+    venue?: string;
+    status: "scheduled" | "live" | "finished";
+    homeTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string; groupCode?: string };
+    awayTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string; groupCode?: string };
+    homeScore?: number;
+    awayScore?: number;
+  } = {
+    matchId: match._id,
+    kickoffAt: match.kickoffAt,
+    stageLabel: getSpanishStageLabel(match.stageLabel),
+    groupCode: homeTeam.groupCode ?? awayTeam.groupCode ?? null,
+    matchNumber: match.matchNumber,
+    venue: match.venue,
+    status: match.status,
+    homeTeam: {
+      id: homeTeam._id,
+      code: homeTeam.code,
+      name: getSpanishTeamName(homeTeam.code, homeTeam.name),
+      flagEmoji: homeTeam.flagEmoji,
+      groupCode: homeTeam.groupCode,
+    },
+    awayTeam: {
+      id: awayTeam._id,
+      code: awayTeam.code,
+      name: getSpanishTeamName(awayTeam.code, awayTeam.name),
+      flagEmoji: awayTeam.flagEmoji,
+      groupCode: awayTeam.groupCode,
     },
   };
 
@@ -283,6 +360,22 @@ export const getPublicDashboardMatches = query({
         totalPredictionCountForFinishedMatches: finishedPredictions.length,
         bestExactScoreCount: Math.max(0, ...exactScoreCounts.values()),
       },
+    };
+  },
+});
+
+export const getPublicCalendar = query({
+  args: {},
+  returns: publicCalendarResult,
+  handler: async (ctx) => {
+    const matches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
+    const teamById = await getTeamMap(ctx, matches);
+
+    return {
+      matches: matches.flatMap((match) => {
+        const summary = summarizeCalendarMatch(match, teamById);
+        return summary ? [summary] : [];
+      }),
     };
   },
 });

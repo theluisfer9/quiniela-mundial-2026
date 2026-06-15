@@ -4,7 +4,7 @@ export const POST_AUTH_REDIRECT_PATH = "/" as const;
 export const PRIMARY_NAV_ITEMS = [
   { to: "/", hash: undefined, label: "Inicio", labelKey: "home" },
   { to: "/dashboard", hash: undefined, label: "Tablero", labelKey: "dashboard" },
-  { to: "/manual", hash: undefined, label: "Manual", labelKey: "manual" },
+  { to: "/calendario", hash: undefined, label: "Calendario", labelKey: "calendar" },
 ] as const;
 
 export type HeaderAccountState = "needsPin" | "storedPlayer";
