@@ -62,6 +62,11 @@ export type PublicDashboardMatchPage = {
   hasNextPage: boolean;
 };
 
+export type PublicHomeMatchSections = {
+  todayMatches: PublicDashboardMatch[];
+  upcomingMatches: PublicDashboardMatch[];
+};
+
 type DerivePublicDashboardInput = {
   matches: PublicDashboardMatchesData | undefined;
   standings: HomeStandingsRow[] | undefined;
@@ -172,6 +177,13 @@ export function paginatePublicDashboardMatches(
     totalCount: matches.length,
     hasPreviousPage: safePage > 1,
     hasNextPage: safePage < pageCount,
+  };
+}
+
+export function getPublicHomeMatchSections(dashboard: PublicDashboardViewModel): PublicHomeMatchSections {
+  return {
+    todayMatches: dashboard.todayMatches.filter((match) => match.status !== "live"),
+    upcomingMatches: dashboard.upcomingMatches,
   };
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { derivePublicDashboardViewModel, paginatePublicDashboardMatches, type PublicDashboardMatch } from "./public-dashboard";
+import { derivePublicDashboardViewModel, getPublicHomeMatchSections, paginatePublicDashboardMatches, type PublicDashboardMatch } from "./public-dashboard";
 
 const TEAM_ARG = { id: "arg", code: "ARG", name: "Argentina", flagEmoji: "AR" };
 const TEAM_MEX = { id: "mex", code: "MEX", name: "Mexico", flagEmoji: "MX" };
@@ -253,6 +253,34 @@ describe("paginatePublicDashboardMatches", () => {
       pageCount: 1,
       matches: [],
       totalCount: 0,
+    });
+  });
+});
+
+describe("getPublicHomeMatchSections", () => {
+  it("separates today's non-live matches from later upcoming matches", () => {
+    const todayScheduled = match({ matchId: "today-scheduled" });
+    const todayLive = match({ matchId: "today-live", status: "live" });
+    const tomorrow = match({ matchId: "tomorrow" });
+    const dashboard = derivePublicDashboardViewModel({
+      matches: {
+        liveMatches: [todayLive],
+        todayMatches: [todayScheduled, todayLive],
+        upcomingMatches: [tomorrow],
+        finishedMatches: [],
+        stats: {
+          leaderName: null,
+          finishedMatchCount: 0,
+          totalPredictionCountForFinishedMatches: 0,
+          bestExactScoreCount: 0,
+        },
+      },
+      standings: [],
+    });
+
+    expect(getPublicHomeMatchSections(dashboard)).toEqual({
+      todayMatches: [todayScheduled],
+      upcomingMatches: [tomorrow],
     });
   });
 });

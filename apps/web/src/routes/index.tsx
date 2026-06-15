@@ -22,6 +22,7 @@ import {
 } from "@/lib/player-session";
 import {
   derivePublicDashboardViewModel,
+  getPublicHomeMatchSections,
   paginatePublicDashboardMatches,
   type PublicDashboardMatch,
   type PublicDashboardStatCard,
@@ -70,7 +71,12 @@ function HomeComponent() {
     hour: "numeric",
     minute: "2-digit",
   });
-  const upcomingMatchesPage = paginatePublicDashboardMatches(dashboard.upcomingMatches, {
+  const homeMatchSections = getPublicHomeMatchSections(dashboard);
+  const todayMatchesPage = paginatePublicDashboardMatches(homeMatchSections.todayMatches, {
+    page: 1,
+    pageSize: UPCOMING_MATCHES_PAGE_SIZE,
+  });
+  const upcomingMatchesPage = paginatePublicDashboardMatches(homeMatchSections.upcomingMatches, {
     page: 1,
     pageSize: UPCOMING_MATCHES_PAGE_SIZE,
   });
@@ -184,6 +190,16 @@ function HomeComponent() {
             revealPredictions
           />
           <PublicStandings liveMatches={dashboard.liveMatches} rows={dashboard.standings} />
+          {homeMatchSections.todayMatches.length > 0 ? (
+            <MatchGroup
+              eyebrow={t.home.todayGroupEyebrow}
+              title={t.home.todayGroupTitle}
+              description={t.home.todayGroupDescription}
+              matches={todayMatchesPage.matches.slice(0, 3)}
+              emptyLabel={t.home.noTodayMatches}
+              kickoffFormatter={kickoffFormatter}
+            />
+          ) : null}
           <MatchGroup
             eyebrow={t.home.nextGroupEyebrow}
             title={t.home.nextGroupTitle}
