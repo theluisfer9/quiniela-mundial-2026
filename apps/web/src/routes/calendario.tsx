@@ -4,7 +4,7 @@ import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { CalendarDays, GitBranch, ListOrdered } from "lucide-react";
+import { CalendarDays, ListOrdered, Trophy } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -54,13 +54,13 @@ function CalendarRoute() {
         className="border-primary/15 bg-card/98"
       >
         <div className="grid grid-cols-3 gap-2 rounded-[1.15rem] bg-muted p-1">
-          <CalendarTabButton active={activeTab === "schedule"} icon={<CalendarDays className="size-4" />} onClick={() => setActiveTab("schedule")}>
+          <CalendarTabButton active={activeTab === "schedule"} icon={<CalendarDays className="size-5" />} onClick={() => setActiveTab("schedule")}>
             {t.calendar.scheduleTab}
           </CalendarTabButton>
-          <CalendarTabButton active={activeTab === "groups"} icon={<ListOrdered className="size-4" />} onClick={() => setActiveTab("groups")}>
+          <CalendarTabButton active={activeTab === "groups"} icon={<ListOrdered className="size-5" />} onClick={() => setActiveTab("groups")}>
             {t.calendar.groupsTab}
           </CalendarTabButton>
-          <CalendarTabButton active={activeTab === "knockout"} icon={<GitBranch className="size-4" />} onClick={() => setActiveTab("knockout")}>
+          <CalendarTabButton active={activeTab === "knockout"} icon={<Trophy className="size-5" />} onClick={() => setActiveTab("knockout")}>
             Eliminatorias
           </CalendarTabButton>
         </div>
@@ -167,7 +167,7 @@ function CalendarTabButton({ active, children, icon, onClick }: { active: boolea
   return (
     <button
       className={cn(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.9rem] px-3 py-2 text-sm font-black transition",
+        "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[0.9rem] px-2.5 py-2 text-xs font-black transition sm:flex-row sm:gap-2 sm:px-3 sm:text-sm [&>svg]:shrink-0",
         active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
       )}
       type="button"
