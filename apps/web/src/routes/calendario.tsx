@@ -5,7 +5,7 @@ import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { CalendarDays, ListOrdered, Trophy } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   buildCalendarDaySections,
@@ -183,6 +183,7 @@ function ScheduleTab({ daySections }: { daySections: ReturnType<typeof buildCale
   const { dateLocale } = useI18n();
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(() => getDefaultCalendarDayKey(daySections));
   const selectedSection = getSelectedCalendarDaySection(daySections, selectedDayKey);
+  const activeDayButtonRef = useRef<HTMLButtonElement | null>(null);
   const dayFormatter = new Intl.DateTimeFormat(dateLocale, {
     weekday: "long",
     day: "numeric",
@@ -194,6 +195,10 @@ function ScheduleTab({ daySections }: { daySections: ReturnType<typeof buildCale
     month: "short",
     timeZone: "America/Guatemala",
   });
+
+  useEffect(() => {
+    activeDayButtonRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [selectedSection?.dayKey]);
 
   if (!selectedSection) {
     return null;
@@ -208,6 +213,7 @@ function ScheduleTab({ daySections }: { daySections: ReturnType<typeof buildCale
           return (
             <button
               key={section.dayKey}
+              ref={isActive ? activeDayButtonRef : undefined}
               className={cn(
                 "shrink-0 rounded-full border px-4 py-2 text-sm font-black transition",
                 isActive
