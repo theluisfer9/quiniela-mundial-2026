@@ -23,7 +23,7 @@ import {
 import {
   derivePublicDashboardViewModel,
   getPublicHomeMatchSections,
-  paginatePublicDashboardMatches,
+  type PublicDashboardMatchPage,
   type PublicDashboardMatch,
   type PublicDashboardStatCard,
 } from "@/lib/public-dashboard";
@@ -32,14 +32,11 @@ export const Route = createFileRoute("/")({
   component: HomeComponent,
 });
 
-const UPCOMING_MATCHES_PAGE_SIZE = 6;
-
 function HomeComponent() {
   const { dateLocale, t } = useI18n();
   const navigate = useNavigate({ from: Route.fullPath });
   const publicMatches = useQuery(api.matches.getPublicDashboardMatches, {});
   const standings = useQuery(api.standings.getPublicStandings, {});
-  const publicAnalytics = useQuery(api.standings.getPublicDashboardAnalytics, {});
   const loginWithPin = useMutation(api.players.loginWithPin);
   const [pinError, setPinError] = useState<string | null>(null);
   const [isSubmittingPin, setIsSubmittingPin] = useState(false);
@@ -61,7 +58,6 @@ function HomeComponent() {
     },
     currentPlayerName: storedSession?.displayName,
     matches: publicMatches,
-    playerMetrics: publicAnalytics?.rows,
     standings,
   });
   const kickoffFormatter = new Intl.DateTimeFormat(dateLocale, {
@@ -392,7 +388,7 @@ function MatchGroup({
   matches: PublicDashboardMatch[];
   emptyLabel: string;
   kickoffFormatter: Intl.DateTimeFormat;
-  page?: ReturnType<typeof paginatePublicDashboardMatches>;
+  page?: PublicDashboardMatchPage;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
   action?: ReactNode;

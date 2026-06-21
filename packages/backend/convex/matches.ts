@@ -2,7 +2,6 @@ import { v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
-import { calculatePredictionPoints, buildStandingsRows } from "./lib/scoring";
 import { normalizeSoccerScore } from "./lib/scores";
 import { getSpanishStageLabel, getSpanishTeamName } from "./lib/teamDisplay";
 import { requirePlayerBySessionToken } from "./players";
@@ -299,54 +298,6 @@ export const getPublicDashboardMatches = query({
       return summary ? [summary] : [];
     });
     const scoredMatches = allMatches.filter(isScoredMatch);
-    const predictionGroups = await Promise.all(
-      scoredMatches.map((match) =>
-        ctx.db.query("predictions").withIndex("by_match_id", (q) => q.eq("matchId", match._id)).collect(),
-      ),
-    );
-    const activeProfiles = (await ctx.db.query("profiles").collect()).filter(
-      (profile) => profile.pinHash !== undefined && profile.active === true,
-    );
-    const activePlayerIds = new Set(activeProfiles.map((profile) => profile._id));
-    const standingsMatches = scoredMatches.map((match) => ({
-      id: match._id,
-      homeScore: normalizeSoccerScore(match.homeScore),
-      awayScore: normalizeSoccerScore(match.awayScore),
-    }));
-    const finishedPredictions = predictionGroups.flat().flatMap((prediction) => {
-      if (!prediction.playerId || !activePlayerIds.has(prediction.playerId)) {
-        return [];
-      }
-
-      return [{
-        playerId: prediction.playerId,
-        matchId: prediction.matchId,
-        homeScore: normalizeSoccerScore(prediction.homeScore),
-        awayScore: normalizeSoccerScore(prediction.awayScore),
-      }];
-    });
-    const standings = buildStandingsRows({
-      currentPlayerId: null,
-      profiles: activeProfiles.map((profile) => ({ playerId: profile._id, name: profile.displayName })),
-      matches: standingsMatches,
-      predictions: finishedPredictions,
-    });
-    const matchById = new Map(standingsMatches.map((match) => [match.id, match]));
-    const exactScoreCounts = new Map<Id<"profiles">, number>();
-    for (const prediction of finishedPredictions) {
-      const match = matchById.get(prediction.matchId);
-      if (
-        match &&
-        calculatePredictionPoints({
-          predictedHome: prediction.homeScore,
-          predictedAway: prediction.awayScore,
-          actualHome: match.homeScore,
-          actualAway: match.awayScore,
-        }) === 3
-      ) {
-        exactScoreCounts.set(prediction.playerId, (exactScoreCounts.get(prediction.playerId) ?? 0) + 1);
-      }
-    }
 
     return {
       liveMatches: publicMatches.filter((match) => match.status === "live"),
@@ -358,10 +309,10 @@ export const getPublicDashboardMatches = query({
       ),
       finishedMatches: publicMatches.filter((match) => match.status === "finished"),
       stats: {
-        leaderName: standings[0]?.name ?? null,
+        leaderName: null,
         finishedMatchCount: scoredMatches.length,
-        totalPredictionCountForFinishedMatches: finishedPredictions.length,
-        bestExactScoreCount: Math.max(0, ...exactScoreCounts.values()),
+        totalPredictionCountForFinishedMatches: 0,
+        bestExactScoreCount: 0,
       },
     };
   },

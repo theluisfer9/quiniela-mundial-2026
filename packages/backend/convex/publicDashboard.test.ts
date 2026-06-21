@@ -216,17 +216,17 @@ describe("public dashboard", () => {
     expect(json).not.toContain('"awayScore":4');
   });
 
-  it("counts scored public stats and derives the leader from public standings", async () => {
+  it("counts scored public stats without reading predictions", async () => {
     const t = createTest();
     await seedPublicDashboardData(t);
 
     const dashboard = await t.query(api.matches.getPublicDashboardMatches, {});
 
     expect(dashboard.stats).toEqual({
-      leaderName: "Beto",
+      leaderName: null,
       finishedMatchCount: 3,
-      totalPredictionCountForFinishedMatches: 5,
-      bestExactScoreCount: 3,
+      totalPredictionCountForFinishedMatches: 0,
+      bestExactScoreCount: 0,
     });
   });
 
