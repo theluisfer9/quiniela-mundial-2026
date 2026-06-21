@@ -12,17 +12,17 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Authentication** - Better-Auth
 - **PWA** - Progressive Web App support
 
-## Getting Started
+## Development Workflow
 
-First, install the dependencies:
+This is a Bun workspace. Use Bun from the repo root so workspace filters and shared packages resolve correctly.
+
+Install dependencies:
 
 ```bash
 bun install
 ```
 
-## Convex Setup
-
-This project uses Convex as a backend. You'll need to set up Convex before running the app:
+Set up Convex before the first run:
 
 ```bash
 bun run dev:setup
@@ -32,7 +32,7 @@ Follow the prompts to create a new Convex project and connect it to your applica
 
 Copy environment variables from `packages/backend/.env.local` to `apps/*/.env`.
 
-Then, run the development server:
+Run the full development stack:
 
 ```bash
 bun run dev
@@ -40,6 +40,34 @@ bun run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser to see the web application.
 Your app will connect to the Convex cloud backend automatically.
+
+Run the web app and backend separately when you want independent logs or processes:
+
+```bash
+bun run dev:web
+bun run dev:server
+```
+
+Check types across the workspace:
+
+```bash
+bun run check-types
+```
+
+Build all workspace packages and apps:
+
+```bash
+bun run build
+```
+
+Deploy or destroy the Cloudflare infrastructure through the root scripts:
+
+```bash
+bun run deploy
+bun run destroy
+```
+
+For more details, see the guide on [Deploying to Cloudflare with Alchemy](https://www.better-t-stack.dev/docs/guides/cloudflare-alchemy).
 
 ## UI Customization
 
@@ -74,14 +102,6 @@ import { Button } from "@quiniela-mundial-2026/ui/components/button";
 
 If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
 
-## Deployment (Cloudflare via Alchemy)
-
-- Dev: cd apps/web && bun run alchemy dev
-- Deploy: cd apps/web && bun run deploy
-- Destroy: cd apps/web && bun run destroy
-
-For more details, see the guide on [Deploying to Cloudflare with Alchemy](https://www.better-t-stack.dev/docs/guides/cloudflare-alchemy).
-
 ## Project Structure
 
 ```
@@ -98,6 +118,9 @@ quiniela-mundial-2026/
 - `bun run dev`: Start all applications in development mode
 - `bun run build`: Build all applications
 - `bun run dev:web`: Start only the web application
+- `bun run dev:server`: Start only the Convex backend
 - `bun run dev:setup`: Setup and configure your Convex project
 - `bun run check-types`: Check TypeScript types across all apps
+- `bun run deploy`: Deploy Cloudflare infrastructure
+- `bun run destroy`: Destroy Cloudflare infrastructure
 - `cd apps/web && bun run generate-pwa-assets`: Generate PWA assets
