@@ -258,15 +258,17 @@ describe("paginatePublicDashboardMatches", () => {
 });
 
 describe("getPublicHomeMatchSections", () => {
-  it("separates today's non-live matches from later upcoming matches", () => {
+  it("shows all today's non-live matches and only the next future match day", () => {
     const todayScheduled = match({ matchId: "today-scheduled" });
     const todayLive = match({ matchId: "today-live", status: "live" });
-    const tomorrow = match({ matchId: "tomorrow" });
+    const tomorrowEarly = match({ matchId: "tomorrow-early", kickoffAt: Date.UTC(2026, 5, 16, 18) });
+    const tomorrowLate = match({ matchId: "tomorrow-late", kickoffAt: Date.UTC(2026, 5, 17, 3) });
+    const dayAfter = match({ matchId: "day-after", kickoffAt: Date.UTC(2026, 5, 17, 18) });
     const dashboard = derivePublicDashboardViewModel({
       matches: {
         liveMatches: [todayLive],
         todayMatches: [todayScheduled, todayLive],
-        upcomingMatches: [tomorrow],
+        upcomingMatches: [tomorrowEarly, tomorrowLate, dayAfter],
         finishedMatches: [],
         stats: {
           leaderName: null,
@@ -280,7 +282,7 @@ describe("getPublicHomeMatchSections", () => {
 
     expect(getPublicHomeMatchSections(dashboard)).toEqual({
       todayMatches: [todayScheduled],
-      upcomingMatches: [tomorrow],
+      upcomingMatches: [tomorrowEarly, tomorrowLate],
     });
   });
 });

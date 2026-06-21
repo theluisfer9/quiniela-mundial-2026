@@ -11,4 +11,11 @@ crons.cron(
   {},
 );
 
+crons.cron(
+  "sync previous day discipline cards",
+  "20 9 * * *",
+  internal.disciplineActions.syncPreviousGuatemalaDate,
+  {},
+);
+
 export default crons;

@@ -10,9 +10,12 @@
 
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as discipline from "../discipline.js";
+import type * as disciplineActions from "../disciplineActions.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as lib_currentUser from "../lib/currentUser.js";
+import type * as lib_fotmobDiscipline from "../lib/fotmobDiscipline.js";
 import type * as lib_pinAccess from "../lib/pinAccess.js";
 import type * as lib_profiles from "../lib/profiles.js";
 import type * as lib_scores from "../lib/scores.js";
@@ -39,9 +42,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
+  discipline: typeof discipline;
+  disciplineActions: typeof disciplineActions;
   healthCheck: typeof healthCheck;
   http: typeof http;
   "lib/currentUser": typeof lib_currentUser;
+  "lib/fotmobDiscipline": typeof lib_fotmobDiscipline;
   "lib/pinAccess": typeof lib_pinAccess;
   "lib/profiles": typeof lib_profiles;
   "lib/scores": typeof lib_scores;

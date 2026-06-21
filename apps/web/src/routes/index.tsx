@@ -72,14 +72,6 @@ function HomeComponent() {
     minute: "2-digit",
   });
   const homeMatchSections = getPublicHomeMatchSections(dashboard);
-  const todayMatchesPage = paginatePublicDashboardMatches(homeMatchSections.todayMatches, {
-    page: 1,
-    pageSize: UPCOMING_MATCHES_PAGE_SIZE,
-  });
-  const upcomingMatchesPage = paginatePublicDashboardMatches(homeMatchSections.upcomingMatches, {
-    page: 1,
-    pageSize: UPCOMING_MATCHES_PAGE_SIZE,
-  });
 
   useEffect(() => {
     function refreshStoredSession() {
@@ -195,7 +187,7 @@ function HomeComponent() {
               eyebrow={t.home.todayGroupEyebrow}
               title={t.home.todayGroupTitle}
               description={t.home.todayGroupDescription}
-              matches={todayMatchesPage.matches.slice(0, 3)}
+              matches={homeMatchSections.todayMatches}
               emptyLabel={t.home.noTodayMatches}
               kickoffFormatter={kickoffFormatter}
             />
@@ -204,7 +196,7 @@ function HomeComponent() {
             eyebrow={t.home.nextGroupEyebrow}
             title={t.home.nextGroupTitle}
             description={t.home.nextGroupDescription}
-            matches={upcomingMatchesPage.matches.slice(0, 3)}
+            matches={homeMatchSections.upcomingMatches}
             emptyLabel={t.home.noUpcomingPublished}
             kickoffFormatter={kickoffFormatter}
             action={

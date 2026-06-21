@@ -5,7 +5,7 @@ import { api } from "./_generated/api";
 import schema from "./schema";
 import { hashPin } from "./lib/pinAccess";
 import { SEEDED_PROFILE_TIMESTAMP, seededPlayers } from "./lib/seedPlayers";
-import { seededGroupStageTeams } from "./lib/worldCup2026GroupStage";
+import { buildSeededGroupStageMatches, seededGroupStageTeams } from "./lib/worldCup2026GroupStage";
 
 const TEST_PEPPER = "test-pepper";
 const SEEDED_PLAYER_NAMES = seededPlayers.map((player) => player.displayName);
@@ -162,6 +162,12 @@ describe("seedGroupStage", () => {
   it("defines a flag emoji for every seeded team", () => {
     expect(seededGroupStageTeams.filter((team) => !team.flagEmoji).map((team) => team.code)).toEqual([]);
   });
+
+  it("seeds Tunisia vs Japan at 10pm Guatemala time", () => {
+    const match = buildSeededGroupStageMatches().find((candidate) => candidate.matchNumber === 36);
+
+    expect(match?.kickoffAt).toBe(Date.UTC(2026, 5, 21, 4));
+  });
 });
 
 describe("syncMatchResultsByNumber", () => {
@@ -247,6 +253,57 @@ describe("updateTeamWorldRankings", () => {
     expect(team).toMatchObject({
       worldRanking: 4,
       flagEmoji: seededGroupStageTeams.find((seededTeam) => seededTeam.code === "ENG")?.flagEmoji,
+    });
+  });
+});
+
+describe("updateSeededMatchSchedules", () => {
+  const originalPinPepper = process.env.PIN_PEPPER;
+  const originalEnableSeedReset = process.env.ENABLE_SEED_RESET;
+  const originalEnableMatchScheduleUpdate = process.env.ENABLE_MATCH_SCHEDULE_UPDATE;
+
+  beforeEach(() => {
+    process.env.PIN_PEPPER = TEST_PEPPER;
+    process.env.ENABLE_SEED_RESET = "true";
+    process.env.ENABLE_MATCH_SCHEDULE_UPDATE = "true";
+  });
+
+  afterEach(() => {
+    if (originalPinPepper === undefined) delete process.env.PIN_PEPPER;
+    else process.env.PIN_PEPPER = originalPinPepper;
+
+    if (originalEnableSeedReset === undefined) delete process.env.ENABLE_SEED_RESET;
+    else process.env.ENABLE_SEED_RESET = originalEnableSeedReset;
+
+    if (originalEnableMatchScheduleUpdate === undefined) delete process.env.ENABLE_MATCH_SCHEDULE_UPDATE;
+    else process.env.ENABLE_MATCH_SCHEDULE_UPDATE = originalEnableMatchScheduleUpdate;
+  });
+
+  it("updates seeded kickoff times without changing results", async () => {
+    const t = createTest();
+    await t.mutation(api.seed.seedGroupStage, { confirmReset: true });
+    await t.run(async (ctx) => {
+      const match = await ctx.db.query("matches").filter((q) => q.eq(q.field("matchNumber"), 36)).unique();
+      if (!match) throw new Error("Missing match 36");
+      await ctx.db.patch(match._id, {
+        awayScore: 1n,
+        homeScore: 2n,
+        kickoffAt: Date.UTC(2026, 5, 20, 16),
+        status: "finished",
+      });
+    });
+
+    const result = await t.mutation(api.seed.updateSeededMatchSchedules, { confirmUpdate: true });
+    const match = await t.run(async (ctx) => {
+      return await ctx.db.query("matches").filter((q) => q.eq(q.field("matchNumber"), 36)).unique();
+    });
+
+    expect(result.updatedMatches).toBe(1);
+    expect(match).toMatchObject({
+      awayScore: 1n,
+      homeScore: 2n,
+      kickoffAt: Date.UTC(2026, 5, 21, 4),
+      status: "finished",
     });
   });
 });

@@ -181,10 +181,23 @@ export function paginatePublicDashboardMatches(
 }
 
 export function getPublicHomeMatchSections(dashboard: PublicDashboardViewModel): PublicHomeMatchSections {
+  const nextDayKey = dashboard.upcomingMatches[0] ? getGuatemalaDayKey(dashboard.upcomingMatches[0].kickoffAt) : null;
+
   return {
     todayMatches: dashboard.todayMatches.filter((match) => match.status !== "live"),
-    upcomingMatches: dashboard.upcomingMatches,
+    upcomingMatches: nextDayKey === null
+      ? []
+      : dashboard.upcomingMatches.filter((match) => getGuatemalaDayKey(match.kickoffAt) === nextDayKey),
   };
+}
+
+function getGuatemalaDayKey(timestamp: number) {
+  return new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Guatemala",
+    year: "numeric",
+  }).format(new Date(timestamp));
 }
 
 export function derivePublicDashboardViewModel({

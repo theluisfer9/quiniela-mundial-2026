@@ -714,7 +714,7 @@ const seededGroupStageMatchSources: SeededMatchSource[] = [
     homeTeamCode: "TUN",
     awayTeamCode: "JPN",
     localDate: "2026-06-20",
-    localTime: "10:00",
+    localTime: "22:00",
     utcOffsetHours: -6,
     venue: "Estadio BBVA, Guadalupe",
   },

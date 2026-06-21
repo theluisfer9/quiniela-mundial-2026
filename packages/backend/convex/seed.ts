@@ -224,6 +224,47 @@ export const updateTeamWorldRankings = mutation({
   },
 });
 
+export const updateSeededMatchSchedules = mutation({
+  args: {
+    confirmUpdate: v.boolean(),
+  },
+  returns: v.object({
+    updatedMatches: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    if (!args.confirmUpdate) {
+      throw new ConvexError("confirmUpdate must be true");
+    }
+    if (process.env.ENABLE_MATCH_SCHEDULE_UPDATE !== "true") {
+      throw new ConvexError("Match schedule update is not enabled");
+    }
+
+    let updatedMatches = 0;
+    for (const seededMatch of buildSeededGroupStageMatches()) {
+      const matches = await ctx.db
+        .query("matches")
+        .filter((q) => q.eq(q.field("matchNumber"), seededMatch.matchNumber))
+        .collect();
+      if (matches.length !== 1) {
+        throw new ConvexError(`Expected exactly one match with number ${seededMatch.matchNumber}`);
+      }
+
+      const match = matches[0];
+      if (match.kickoffAt === seededMatch.kickoffAt && match.venue === seededMatch.venue) {
+        continue;
+      }
+
+      await ctx.db.patch(match._id, {
+        kickoffAt: seededMatch.kickoffAt,
+        venue: seededMatch.venue,
+      });
+      updatedMatches += 1;
+    }
+
+    return { updatedMatches };
+  },
+});
+
 export const syncMatchResultsByNumber = mutation({
   args: {
     confirmSync: v.boolean(),

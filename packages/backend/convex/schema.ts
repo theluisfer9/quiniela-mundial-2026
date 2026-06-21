@@ -79,6 +79,52 @@ export default defineSchema({
     .index("by_kickoff_at", ["kickoffAt"])
     .index("by_status_kickoff_at", ["status", "kickoffAt"]),
 
+  matchDisciplineEvents: defineTable({
+    cardType: v.union(v.literal("yellow"), v.literal("red"), v.literal("secondYellow")),
+    matchId: v.id("matches"),
+    minute: v.union(v.number(), v.null()),
+    minuteAdded: v.union(v.number(), v.null()),
+    playerName: v.union(v.string(), v.null()),
+    provider: v.literal("fotmob"),
+    providerEventId: v.string(),
+    providerMatchId: v.string(),
+    providerPlayerId: v.union(v.string(), v.null()),
+    syncedAt: v.number(),
+    teamSide: v.union(v.literal("home"), v.literal("away"), v.literal("unknown")),
+  })
+    .index("by_match_id", ["matchId"])
+    .index("by_provider_and_provider_match_id_and_provider_event_id", [
+      "provider",
+      "providerMatchId",
+      "providerEventId",
+    ]),
+
+  matchDisciplineSummaries: defineTable({
+    awayRedCards: v.number(),
+    awayYellowCards: v.union(v.number(), v.null()),
+    homeRedCards: v.number(),
+    homeYellowCards: v.union(v.number(), v.null()),
+    matchId: v.id("matches"),
+    provider: v.literal("fotmob"),
+    providerMatchId: v.string(),
+    syncedAt: v.number(),
+  })
+    .index("by_match_id", ["matchId"])
+    .index("by_provider_and_provider_match_id", ["provider", "providerMatchId"]),
+
+  disciplineSyncLogs: defineTable({
+    date: v.string(),
+    eventsUpserted: v.number(),
+    matchId: v.optional(v.id("matches")),
+    message: v.optional(v.string()),
+    provider: v.literal("fotmob"),
+    providerMatchId: v.optional(v.string()),
+    status: v.union(v.literal("success"), v.literal("failed"), v.literal("skipped")),
+    syncedAt: v.number(),
+  })
+    .index("by_provider_and_date", ["provider", "date"])
+    .index("by_status_and_synced_at", ["status", "syncedAt"]),
+
   predictions: defineTable({
     userId: v.optional(v.string()),
     playerId: v.optional(v.id("profiles")),
