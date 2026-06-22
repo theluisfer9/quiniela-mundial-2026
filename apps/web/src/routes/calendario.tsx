@@ -3,7 +3,7 @@ import { AppSection } from "@quiniela-mundial-2026/ui/components/app-section";
 import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { useConvex } from "convex/react";
 import { CalendarDays, ListOrdered, Trophy } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -39,11 +39,30 @@ type CalendarData = {
 
 function CalendarRoute() {
   const { t } = useI18n();
-  const data = useQuery(api.matches.getPublicCalendar, {}) as CalendarData | undefined;
+  const convex = useConvex();
+  const [data, setData] = useState<CalendarData | undefined>();
   const [activeTab, setActiveTab] = useState<CalendarTab>("schedule");
   const matches = data?.matches ?? [];
   const daySections = buildCalendarDaySections(matches);
   const groups = buildGroupStandings(matches);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    void convex.query(api.matches.getPublicCalendar, {}).then((calendar) => {
+      if (isCurrent) {
+        setData(calendar as CalendarData);
+      }
+    }).catch(() => {
+      if (isCurrent) {
+        setData({ matches: [] });
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [convex]);
 
   return (
     <div className="grid gap-5">
