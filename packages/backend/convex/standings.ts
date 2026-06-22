@@ -281,6 +281,12 @@ export const getPublicDashboardAnalytics = query({
         awayScore: normalizeSoccerScore(prediction.awayScore),
       }];
     });
+    const finishedPredictionsByMatchId = new Map<Doc<"matches">["_id"], typeof finishedPredictions>();
+    for (const prediction of finishedPredictions) {
+      const matchPredictions = finishedPredictionsByMatchId.get(prediction.matchId) ?? [];
+      matchPredictions.push(prediction);
+      finishedPredictionsByMatchId.set(prediction.matchId, matchPredictions);
+    }
     const standings = buildStandingsRows({
       currentPlayerId: null,
       profiles: activeProfiles.map((profile) => ({ playerId: profile._id, name: profile.displayName })),
@@ -304,7 +310,7 @@ export const getPublicDashboardAnalytics = query({
     );
 
     for (const match of matches) {
-      const matchPredictions = finishedPredictions.filter((entry) => entry.matchId === match.id);
+      const matchPredictions = finishedPredictionsByMatchId.get(match.id) ?? [];
       const consensusCounts = { away: 0, draw: 0, home: 0 };
       for (const prediction of matchPredictions) {
         consensusCounts[getOutcome(prediction.homeScore, prediction.awayScore)] += 1;
@@ -382,20 +388,24 @@ export const getPublicDashboardAnalytics = query({
     const teamById = new Map(teams.filter((team): team is NonNullable<typeof team> => team !== null).map((team) => [team._id, team]));
     const consensusMatches = await Promise.all(
       startedMatches.map(async (match) => {
-        const predictions = await ctx.db
-          .query("predictions")
-          .withIndex("by_match_id", (q) => q.eq("matchId", match._id))
-          .collect();
+        const predictions = match.status === "finished"
+          ? (finishedPredictionsByMatchId.get(match._id) ?? [])
+          : await ctx.db
+              .query("predictions")
+              .withIndex("by_match_id", (q) => q.eq("matchId", match._id))
+              .collect();
         let homeCount = 0;
         let drawCount = 0;
         let awayCount = 0;
 
         for (const prediction of predictions) {
-          if (!prediction.playerId || !activePlayerIds.has(prediction.playerId)) {
+          if (match.status !== "finished" && (!prediction.playerId || !activePlayerIds.has(prediction.playerId))) {
             continue;
           }
 
-          const outcome = getOutcome(normalizeSoccerScore(prediction.homeScore), normalizeSoccerScore(prediction.awayScore));
+          const homeScore = typeof prediction.homeScore === "bigint" ? normalizeSoccerScore(prediction.homeScore) : prediction.homeScore;
+          const awayScore = typeof prediction.awayScore === "bigint" ? normalizeSoccerScore(prediction.awayScore) : prediction.awayScore;
+          const outcome = getOutcome(homeScore, awayScore);
           if (outcome === "home") {
             homeCount += 1;
           } else if (outcome === "away") {
