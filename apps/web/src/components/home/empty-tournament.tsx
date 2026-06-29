@@ -11,7 +11,7 @@ export function EmptyTournament({ currentUserName }: EmptyTournamentProps) {
     <AppSection
       eyebrow="Bienvenida"
       title={`Hola, ${currentUserName}`}
-      description="El torneo todavía no arranca. Cuando publiquemos el fixture, este inicio mostrará partidos, tabla y accesos para pronosticar."
+      description="El torneo todavía no arranca. Cuando publiquemos el calendario, este inicio mostrará partidos, tabla y accesos para pronosticar."
       className="border-primary/20 bg-[radial-gradient(circle_at_top_left,rgba(18,72,120,0.08),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,236,0.98))]"
     >
       <div className="grid gap-4 lg:grid-cols-[1.3fr_0.95fr]">
@@ -19,17 +19,17 @@ export function EmptyTournament({ currentUserName }: EmptyTournamentProps) {
           <CardHeader className="border-b border-border/70 bg-[linear-gradient(135deg,rgba(9,61,110,0.06),rgba(215,38,56,0.08))]">
             <div className="flex flex-wrap items-center gap-2 text-[0.72rem] font-semibold tracking-[0.2em] text-primary uppercase">
               <span className="rounded-full bg-primary/10 px-3 py-1">Previa</span>
-              <span className="rounded-full bg-[#d72638]/10 px-3 py-1 text-[#b81f31]">Fixture pendiente</span>
+              <span className="rounded-full bg-[#d72638]/10 px-3 py-1 text-[#b81f31]">Calendario pendiente</span>
             </div>
             <CardTitle className="text-2xl font-semibold tracking-tight">Todavía no hay partidos publicados</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5 pt-1">
             <p className="text-sm leading-6 text-muted-foreground">
-              Cuando se cargue el fixture, verás los partidos abiertos, el siguiente cierre y la tabla de posiciones.
+              Cuando se cargue el calendario, verás los partidos abiertos, el siguiente cierre y la tabla de posiciones.
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-[1.5rem] border border-primary/10 bg-primary/5 px-4 py-4">
-                <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-primary uppercase">Fixture</p>
+                <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-primary uppercase">Calendario</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">Cada partido tendrá acceso directo para cargar marcador.</p>
               </div>
               <div className="rounded-[1.5rem] border border-primary/10 bg-primary/5 px-4 py-4">
@@ -43,7 +43,7 @@ export function EmptyTournament({ currentUserName }: EmptyTournamentProps) {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button className="rounded-full bg-[#d72638] text-white hover:bg-[#bf2030]" render={<a href="#proximos-pasos" />}>
-                Ver flujo
+                Ver pasos
               </Button>
               <Button variant="outline" className="rounded-full" render={<a href="/dashboard" />}>
                 Administrar mi cuenta

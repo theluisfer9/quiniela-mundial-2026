@@ -6,6 +6,6 @@ export function getPrivacyRevealCopy({ isLocked, t }: { isLocked: boolean; t?: A
   }
 
   return isLocked
-    ? "Este partido ya empezo. Tu pick queda cerrado y esta vista sigue mostrando solo tus pronosticos."
-    : "En /pronosticos esta vista muestra solo tus picks. Se mantienen privados hasta que empiece cada partido.";
+    ? "Este partido ya empezó. Tu pronóstico queda cerrado y esta vista sigue mostrando solo tus pronósticos."
+    : "Esta vista muestra solo tus pronósticos. Se mantienen privados hasta que empiece cada partido.";
 }

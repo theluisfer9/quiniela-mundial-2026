@@ -3,7 +3,8 @@ import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 
 import type { CalendarMatch, GroupStandingRow } from "@/lib/calendar-groups";
-import { KNOCKOUT_MATCHES, KNOCKOUT_ROUND_LABELS, type KnockoutMatch, type KnockoutRound, type KnockoutSlot } from "@/lib/knockout-bracket";
+import { KNOCKOUT_MATCHES, type KnockoutMatch, type KnockoutRound, type KnockoutSlot } from "@/lib/knockout-bracket";
+import { useI18n, type AppCopy } from "@/lib/i18n";
 
 type TeamLike = Pick<GroupStandingRow, "flagEmoji" | "teamCode" | "teamName">;
 
@@ -133,8 +134,8 @@ function slotFromTeam(team: CalendarMatch["homeTeam"]): BracketSlot {
   return { label: team.code, team: teamFromCalendar(team) };
 }
 
-function shortName(team?: TeamLike) {
-  return team?.teamCode ?? "Pendiente";
+function shortName(team: TeamLike | undefined, fallback: string) {
+  return team?.teamCode ?? fallback;
 }
 
 function buildBracketMatches(matches: CalendarMatch[]) {
@@ -286,21 +287,25 @@ function formatScore(match: BracketMatch) {
   return `${match.homeScore}-${match.awayScore}`;
 }
 
-function statusLabel(match: BracketMatch) {
-  if (match.status === "finished") {
-    return "Finalizado";
-  }
-  if (match.status === "live") {
-    return "En vivo";
-  }
-  if (match.status === "scheduled") {
-    return "Programado";
-  }
-  return KNOCKOUT_ROUND_LABELS[match.round];
+function roundLabel(t: AppCopy["calendar"], round: KnockoutRound) {
+  return t.knockoutRounds[round];
 }
 
-function matchHoverLabel(match: BracketMatch) {
-  return `${match.id} · ${KNOCKOUT_ROUND_LABELS[match.round]} · ${shortName(match.home.team)} vs ${shortName(match.away.team)}`;
+function statusLabel(match: BracketMatch, t: AppCopy["calendar"], statusCopy: AppCopy["home"]) {
+  if (match.status === "finished") {
+    return statusCopy.statusFinished;
+  }
+  if (match.status === "live") {
+    return statusCopy.statusLive;
+  }
+  if (match.status === "scheduled") {
+    return statusCopy.statusScheduled;
+  }
+  return roundLabel(t, match.round);
+}
+
+function matchHoverLabel(match: BracketMatch, t: AppCopy["calendar"]) {
+  return `${roundLabel(t, match.round)} · ${shortName(match.home.team, t.pending)} vs ${shortName(match.away.team, t.pending)}`;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -373,12 +378,12 @@ function advancedFlagPoint(source: LayoutMatch) {
   return polar(source.angle, source.radius - ADVANCED_FLAG_OFFSET);
 }
 
-function SlotMarker({ angle, match, onSelect, selected, slot }: { angle: number; match: LayoutMatch; onSelect: () => void; selected?: boolean; slot: BracketSlot }) {
+function SlotMarker({ angle, match, onSelect, selected, slot, t }: { angle: number; match: LayoutMatch; onSelect: () => void; selected?: boolean; slot: BracketSlot; t: AppCopy["calendar"] }) {
   const point = polar(angle, OUTER_FLAG_RADIUS);
   const isLoser = match.status === "finished" && Boolean(match.winner && slot.team && match.winner.teamCode !== slot.team.teamCode);
   return (
     <g className="cursor-pointer" onClick={onSelect}>
-      <title>{matchHoverLabel(match)}</title>
+      <title>{matchHoverLabel(match, t)}</title>
       <circle cx={point.x} cy={point.y} fill="#000" opacity="0.001" pointerEvents="all" r={FLAG_HIT_RADIUS} />
       <path d={slotConnectorPath(angle, match)} fill="none" stroke={selected ? "#f7d66a" : "#56534c"} strokeLinecap="round" strokeLinejoin="round" strokeWidth={selected ? 3 : 2} />
       <FlagBadge dimmed={isLoser} point={point} selected={selected} team={slot.team} />
@@ -426,6 +431,7 @@ function focalPan(previousPan: Point, previousZoom: number, nextZoom: number, fo
 }
 
 export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] }) {
+  const { t } = useI18n();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [selectedMatchId, setSelectedMatchId] = useState("M73");
@@ -450,16 +456,16 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
   return (
     <div className="grid min-w-0 gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-border/70 bg-background/85 p-3">
-        <p className="text-sm font-semibold text-muted-foreground">Toca un cruce para ver detalle.</p>
+        <p className="text-sm font-semibold text-muted-foreground">{t.calendar.bracketHint}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button className="h-10 rounded-full px-3" type="button" variant="outline" onClick={() => zoomAt(clamp(zoom - 0.15, 0.72, 1.9), { x: CENTER, y: CENTER })}>
+          <Button aria-label={t.calendar.zoomOut} className="h-10 rounded-full px-3" type="button" variant="outline" onClick={() => zoomAt(clamp(zoom - 0.15, 0.72, 1.9), { x: CENTER, y: CENTER })}>
             <ZoomOut className="size-4" />
           </Button>
-          <Button className="h-10 rounded-full px-3" type="button" variant="outline" onClick={() => zoomAt(clamp(zoom + 0.15, 0.72, 1.9), { x: CENTER, y: CENTER })}>
+          <Button aria-label={t.calendar.zoomIn} className="h-10 rounded-full px-3" type="button" variant="outline" onClick={() => zoomAt(clamp(zoom + 0.15, 0.72, 1.9), { x: CENTER, y: CENTER })}>
             <ZoomIn className="size-4" />
           </Button>
           <Button className="h-10 rounded-full px-4 text-xs font-black" type="button" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>
-            Reset
+            {t.calendar.resetView}
           </Button>
         </div>
       </div>
@@ -519,7 +525,7 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
             zoomAt(nextZoom, toSvgPoint({ x: event.clientX - rect.left, y: event.clientY - rect.top }, event.currentTarget));
           }}
         >
-          <svg aria-label="Bracket radial de eliminatorias" className="h-[56vh] min-h-[340px] w-full max-h-[540px] select-none" role="img" viewBox="0 0 1200 1200">
+          <svg aria-label={t.calendar.bracketAria} className="h-[56vh] min-h-[340px] w-full max-h-[540px] select-none" role="img" viewBox="0 0 1200 1200">
             <defs>
               <radialGradient id="cup-glow" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#f7d66a" stopOpacity="0.76" />
@@ -538,12 +544,12 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
                 const active = Boolean(match.winner) || isSelected;
                 return (
                   <g key={`${match.id}-incoming`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
-                    <title>{matchHoverLabel(match)}</title>
+                    <title>{matchHoverLabel(match, t.calendar)}</title>
                     <circle cx={match.x} cy={match.y} fill="#000" opacity="0.001" pointerEvents="all" r={NODE_HIT_RADIUS} />
                     {match.round === "round-of-32" ? (
                       <>
-                        <SlotMarker angle={match.angle - FIRST_ROUND_PAIR_SPREAD} match={match} onSelect={() => selectMatch(match.id)} selected={isSelected} slot={match.home} />
-                        <SlotMarker angle={match.angle + FIRST_ROUND_PAIR_SPREAD} match={match} onSelect={() => selectMatch(match.id)} selected={isSelected} slot={match.away} />
+                        <SlotMarker angle={match.angle - FIRST_ROUND_PAIR_SPREAD} match={match} onSelect={() => selectMatch(match.id)} selected={isSelected} slot={match.home} t={t.calendar} />
+                        <SlotMarker angle={match.angle + FIRST_ROUND_PAIR_SPREAD} match={match} onSelect={() => selectMatch(match.id)} selected={isSelected} slot={match.away} t={t.calendar} />
                       </>
                     ) : null}
                     {getSourceIds(match).map((sourceId) => {
@@ -582,10 +588,10 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
 
                 return (
                   <g key={`${match.id}-node`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
-                    <title>{matchHoverLabel(match)}</title>
+                    <title>{matchHoverLabel(match, t.calendar)}</title>
                     {hasNodeTarget ? <circle cx={nodePoint.x} cy={nodePoint.y} fill="#000" opacity="0.001" pointerEvents="all" r={NODE_HIT_RADIUS} /> : null}
                     {isSelected ? (
-                      <text dominantBaseline="middle" fill="#f7d66a" fontSize="12" fontWeight="900" letterSpacing="1.5" textAnchor="middle" x={nodePoint.x} y={nodePoint.y + 32}>{match.id}</text>
+                      <text dominantBaseline="middle" fill="#f7d66a" fontSize="12" fontWeight="900" letterSpacing="1.5" textAnchor="middle" x={nodePoint.x} y={nodePoint.y + 32}>{roundLabel(t.calendar, match.round)}</text>
                     ) : null}
                   </g>
                 );
@@ -614,7 +620,7 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
 
                   return [
                     <g key={`${match.id}-${key}-advanced`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
-                      <title>{matchHoverLabel(match)}</title>
+                      <title>{matchHoverLabel(match, t.calendar)}</title>
                       <circle cx={point.x} cy={point.y} fill="#000" opacity="0.001" pointerEvents="all" r={FLAG_HIT_RADIUS} />
                       <FlagBadge point={point} selected={isSelected} team={team} />
                     </g>,
@@ -643,27 +649,29 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
 }
 
 function MatchDetailCard({ match, onClose }: { match: LayoutMatch; onClose?: () => void }) {
+  const { t } = useI18n();
+
   return (
     <article className="rounded-[1.35rem] border border-border/70 bg-card/95 p-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)] backdrop-blur-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[0.68rem] font-black tracking-[0.18em] text-primary uppercase">{match.id} · {KNOCKOUT_ROUND_LABELS[match.round]}</p>
+          <p className="text-[0.68rem] font-black tracking-[0.18em] text-primary uppercase">{roundLabel(t.calendar, match.round)}</p>
           <h3 className="mt-2 font-display text-xl font-extrabold tracking-[-0.04em] text-foreground xl:text-2xl">
-            {match.home.team?.flagEmoji ?? "◦"} {shortName(match.home.team)} <span className="text-muted-foreground">vs</span> {match.away.team?.flagEmoji ?? "◦"} {shortName(match.away.team)}
+            {match.home.team?.flagEmoji ?? "◦"} {shortName(match.home.team, t.calendar.pending)} <span className="text-muted-foreground">vs</span> {match.away.team?.flagEmoji ?? "◦"} {shortName(match.away.team, t.calendar.pending)}
           </h3>
         </div>
         {onClose ? (
-          <button aria-label="Cerrar detalle" className="rounded-full border border-border/70 bg-background/80 p-2 text-muted-foreground transition hover:text-foreground" type="button" onClick={onClose}>
+          <button aria-label={t.calendar.closeDetail} className="rounded-full border border-border/70 bg-background/80 p-2 text-muted-foreground transition hover:text-foreground" type="button" onClick={onClose}>
             <X className="size-4" />
           </button>
         ) : null}
       </div>
       <div className="mt-4 grid gap-2 rounded-[1rem] border border-border/70 bg-background/80 p-3 text-sm font-semibold">
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Estado</span><span>{statusLabel(match)}</span></div>
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Marcador 90'</span><span>{formatScore(match)}</span></div>
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Avanza</span><span>{match.winner ? `${match.winner.flagEmoji ?? ""} ${match.winner.teamName}` : "Pendiente"}</span></div>
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Sede</span><span>{match.city}</span></div>
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Fecha</span><span>{match.dateLabel}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.status}</span><span>{statusLabel(match, t.calendar, t.home)}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.score90}</span><span>{formatScore(match)}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.advances}</span><span>{match.winner ? `${match.winner.flagEmoji ?? ""} ${match.winner.teamName}` : t.calendar.pending}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.venue}</span><span>{match.city}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.date}</span><span>{match.dateLabel}</span></div>
       </div>
     </article>
   );

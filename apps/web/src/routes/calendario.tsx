@@ -90,7 +90,7 @@ function CalendarRoute() {
             {t.calendar.groupsTab}
           </CalendarTabButton>
           <CalendarTabButton active={activeTab === "knockout"} icon={<Trophy className="size-5" />} onClick={() => setActiveTab("knockout")}>
-            Eliminatorias
+            {t.calendar.knockoutTab}
           </CalendarTabButton>
         </div>
       </AppSection>
@@ -115,12 +115,13 @@ function CalendarRoute() {
 }
 
 function KnockoutTab({ groups, matches }: { groups: GroupStanding[]; matches: CalendarMatch[] }) {
+  const { t } = useI18n();
   void groups;
 
   return (
     <AppSection
-      eyebrow="Eliminatorias"
-      title="Camino a la copa"
+      eyebrow={t.calendar.knockoutEyebrow}
+      title={t.calendar.knockoutTitle}
       className="min-w-0 border-primary/15 bg-card/98"
       contentClassName="min-w-0"
     >
@@ -352,7 +353,7 @@ function CalendarMatchCard({ match }: { match: CalendarMatch }) {
         <div className="min-w-0">
           <p className="text-[0.68rem] font-black tracking-[0.18em] text-primary uppercase">{localizeStageLabel(match.stageLabel, locale)}</p>
           <p className="mt-1 text-sm font-semibold text-muted-foreground">
-            {timeFormatter.format(new Date(match.kickoffAt))} · {match.matchNumber ? t.calendar.matchNumber(match.matchNumber) : t.calendar.venueFallback}
+            {timeFormatter.format(new Date(match.kickoffAt))}
           </p>
         </div>
         <StatusBadge status={match.status} />
