@@ -43,6 +43,10 @@ lerna-debug.log*
 # Local agent workspaces
 .worktrees/
 .superpowers/
+.hermes/
+
+# Generated media outputs
+apps/video/out/
 
 # Local sharing docs with player PINs
 docs/private/
