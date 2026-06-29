@@ -74,6 +74,8 @@ export default defineSchema({
     venue: v.optional(v.string()),
     homeScore: v.optional(persistedScore),
     awayScore: v.optional(persistedScore),
+    winnerTeamId: v.optional(v.id("teams")),
+    advancementMethod: v.optional(v.union(v.literal("regularTime"), v.literal("extraTime"), v.literal("penalties"))),
     status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
   })
     .index("by_kickoff_at", ["kickoffAt"])

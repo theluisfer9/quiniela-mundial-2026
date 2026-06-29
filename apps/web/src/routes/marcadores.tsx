@@ -25,11 +25,14 @@ type ManageableMatch = {
   matchId: Id<"matches">;
   kickoffAt: number;
   stageLabel: string;
+  matchNumber?: number;
   status: "scheduled" | "live" | "finished";
-  homeTeam: { code: string; name: string; flagEmoji?: string };
-  awayTeam: { code: string; name: string; flagEmoji?: string };
+  homeTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
+  awayTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
   homeScore?: number;
   awayScore?: number;
+  winnerTeam?: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
+  advancementMethod?: "regularTime" | "extraTime" | "penalties";
 };
 
 type OperatorMatchVote = {
@@ -52,12 +55,36 @@ type OperatorMatchVotes = {
   votes: OperatorMatchVote[];
 };
 
+type ScoreDraft = {
+  homeScore: string;
+  awayScore: string;
+  winnerTeamId: string;
+  advancementMethod: "extraTime" | "penalties";
+};
+
 type OperatorTab = "scores" | "votes";
 
 type DataState =
   | { state: "idle" | "loading" }
   | { state: "ready"; matches: ManageableMatch[]; voteMatches: OperatorMatchVotes[] }
   | { state: "error"; message: string };
+
+function isKnockoutMatch(match: ManageableMatch) {
+  return (match.matchNumber ?? 0) >= 73;
+}
+
+function createScoreDraft(match: ManageableMatch): ScoreDraft {
+  return {
+    awayScore: String(match.awayScore ?? 0),
+    homeScore: String(match.homeScore ?? 0),
+    winnerTeamId: String(match.winnerTeam?.id ?? match.homeTeam.id),
+    advancementMethod: match.advancementMethod === "extraTime" ? "extraTime" : "penalties",
+  };
+}
+
+function buildScoreDrafts(matches: ManageableMatch[]) {
+  return Object.fromEntries(matches.map((match) => [String(match.matchId), createScoreDraft(match)]));
+}
 
 function ScoreManagerRoute() {
   const { t } = useI18n();
@@ -69,7 +96,7 @@ function ScoreManagerRoute() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [isSubmittingPin, setIsSubmittingPin] = useState(false);
   const [savingMatchId, setSavingMatchId] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, { homeScore: string; awayScore: string }>>({});
+  const [drafts, setDrafts] = useState<Record<string, ScoreDraft>>({});
   const [activeTab, setActiveTab] = useState<OperatorTab>("scores");
 
   async function loadOperatorData(sessionToken: string) {
@@ -97,13 +124,7 @@ function ScoreManagerRoute() {
         }
 
         setData({ state: "ready", matches: manageableResult.matches, voteMatches: votesResult.matches });
-        setDrafts(Object.fromEntries(manageableResult.matches.map((match: ManageableMatch) => [
-          String(match.matchId),
-          {
-            awayScore: String(match.awayScore ?? 0),
-            homeScore: String(match.homeScore ?? 0),
-          },
-        ])));
+        setDrafts(buildScoreDrafts(manageableResult.matches));
       })
       .catch(() => {
         if (!isCurrent) {
@@ -158,9 +179,20 @@ function ScoreManagerRoute() {
       return;
     }
 
+    const isTiedKnockoutFinished = status === "finished" && isKnockoutMatch(match) && homeScore === awayScore;
+    const winnerTeamId = isTiedKnockoutFinished ? draft?.winnerTeamId : undefined;
+    const advancementMethod = isTiedKnockoutFinished ? draft?.advancementMethod : undefined;
+    if (isTiedKnockoutFinished && (!winnerTeamId || (winnerTeamId !== String(match.homeTeam.id) && winnerTeamId !== String(match.awayTeam.id)))) {
+      toast.error("Elegí quién avanza", { description: "En eliminatoria empatada, el marcador de 90' queda igual pero hay que guardar el equipo que pasa." });
+      return;
+    }
+
     if (status === "finished") {
+      const advancementLabel = isTiedKnockoutFinished
+        ? ` Avanza ${winnerTeamId === String(match.homeTeam.id) ? match.homeTeam.name : match.awayTeam.name} por ${advancementMethod === "extraTime" ? "tiempo extra" : "penales"}.`
+        : "";
       const confirmed = window.confirm(
-        `¿Finalizar ${match.homeTeam.name} ${homeScore}-${awayScore} ${match.awayTeam.name}? Ya no aparecerá para edición en vivo.`,
+        `¿Finalizar ${match.homeTeam.name} ${homeScore}-${awayScore} ${match.awayTeam.name}?${advancementLabel} Ya no aparecerá para edición en vivo.`,
       );
 
       if (!confirmed) {
@@ -176,16 +208,16 @@ function ScoreManagerRoute() {
         matchId: match.matchId,
         sessionToken: session.sessionToken,
         status,
+        ...(isTiedKnockoutFinished
+          ? {
+              winnerTeamId: winnerTeamId as Id<"teams">,
+              advancementMethod,
+            }
+          : {}),
       });
       const { manageableResult, votesResult } = await loadOperatorData(session.sessionToken);
       setData({ state: "ready", matches: manageableResult.matches, voteMatches: votesResult.matches });
-      setDrafts(Object.fromEntries(manageableResult.matches.map((nextMatch: ManageableMatch) => [
-        String(nextMatch.matchId),
-        {
-          awayScore: String(nextMatch.awayScore ?? 0),
-          homeScore: String(nextMatch.homeScore ?? 0),
-        },
-      ])));
+      setDrafts(buildScoreDrafts(manageableResult.matches));
       toast.success(status === "finished" ? "Partido finalizado" : "Marcador en vivo guardado", {
         description: `${match.homeTeam.name} ${homeScore}-${awayScore} ${match.awayTeam.name}`,
       });
@@ -250,8 +282,11 @@ function ScoreManagerRoute() {
         <div className="grid gap-4">
           {data.matches.map((match) => {
             const key = String(match.matchId);
-            const draft = drafts[key] ?? { homeScore: String(match.homeScore ?? 0), awayScore: String(match.awayScore ?? 0) };
+            const draft = drafts[key] ?? createScoreDraft(match);
             const isSaving = savingMatchId === key;
+            const draftHomeScore = Number(draft.homeScore);
+            const draftAwayScore = Number(draft.awayScore);
+            const showAdvancement = isKnockoutMatch(match) && Number.isInteger(draftHomeScore) && Number.isInteger(draftAwayScore) && draftHomeScore === draftAwayScore;
 
             return (
               <article key={key} className="min-w-0 overflow-hidden rounded-[1.35rem] border border-[#2A398D]/14 bg-card/95 p-3 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.45)] sm:rounded-[1.5rem] sm:p-5">
@@ -277,6 +312,35 @@ function ScoreManagerRoute() {
                     onChange={(value) => setDrafts((current) => ({ ...current, [key]: { ...draft, awayScore: value } }))}
                   />
                 </div>
+                {showAdvancement ? (
+                  <div className="mt-4 grid gap-3 rounded-[1rem] border border-[#2A398D]/14 bg-[#2A398D]/5 p-3 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-xs font-black tracking-[0.16em] text-muted-foreground uppercase">Avanza</span>
+                      <select
+                        className="min-h-11 rounded-[0.9rem] border border-border/80 bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-[#2A398D] focus:ring-2 focus:ring-[#2A398D]/20"
+                        value={draft.winnerTeamId}
+                        onChange={(event) => setDrafts((current) => ({ ...current, [key]: { ...draft, winnerTeamId: event.target.value } }))}
+                      >
+                        <option value={String(match.homeTeam.id)}>{match.homeTeam.name}</option>
+                        <option value={String(match.awayTeam.id)}>{match.awayTeam.name}</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-xs font-black tracking-[0.16em] text-muted-foreground uppercase">Definición</span>
+                      <select
+                        className="min-h-11 rounded-[0.9rem] border border-border/80 bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-[#2A398D] focus:ring-2 focus:ring-[#2A398D]/20"
+                        value={draft.advancementMethod}
+                        onChange={(event) => setDrafts((current) => ({ ...current, [key]: { ...draft, advancementMethod: event.target.value as ScoreDraft["advancementMethod"] } }))}
+                      >
+                        <option value="extraTime">Tiempo extra</option>
+                        <option value="penalties">Penales</option>
+                      </select>
+                    </label>
+                    <p className="text-xs font-semibold leading-5 text-muted-foreground sm:col-span-2">
+                      El marcador de 90' queda para puntos; este campo solo define quién sigue en la llave.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="mt-5 grid gap-2 sm:grid-cols-2">
                   <Button className="h-12 rounded-[1rem]" disabled={isSaving} type="button" variant="outline" onClick={() => void handleSave(match, "live")}>Guardar en vivo</Button>
                   <Button className="h-12 rounded-[1rem]" disabled={isSaving} type="button" onClick={() => void handleSave(match, "finished")}>Finalizar partido</Button>

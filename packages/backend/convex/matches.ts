@@ -7,6 +7,8 @@ import { getSpanishStageLabel, getSpanishTeamName } from "./lib/teamDisplay";
 import { requirePlayerBySessionToken } from "./players";
 import { requireScoreOperatorBySessionToken } from "./scoreOperators";
 
+const advancementMethod = v.union(v.literal("regularTime"), v.literal("extraTime"), v.literal("penalties"));
+
 const teamSummary = v.object({
   id: v.id("teams"),
   code: v.string(),
@@ -52,11 +54,14 @@ const publicMatchSummary = v.object({
   matchId: v.id("matches"),
   kickoffAt: v.number(),
   stageLabel: v.string(),
+  matchNumber: v.optional(v.number()),
   status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
   homeTeam: teamSummary,
   awayTeam: teamSummary,
   homeScore: v.optional(v.number()),
   awayScore: v.optional(v.number()),
+  winnerTeam: v.optional(teamSummary),
+  advancementMethod: v.optional(advancementMethod),
 });
 
 const publicDashboardResult = v.object({
@@ -84,6 +89,8 @@ const publicCalendarMatch = v.object({
   awayTeam: calendarTeamSummary,
   homeScore: v.optional(v.number()),
   awayScore: v.optional(v.number()),
+  winnerTeam: v.optional(teamSummary),
+  advancementMethod: v.optional(advancementMethod),
 });
 
 const publicCalendarResult = v.object({
@@ -101,6 +108,8 @@ const publicKnockoutBracketMatch = v.object({
   awayTeam: teamSummary,
   homeScore: v.optional(v.number()),
   awayScore: v.optional(v.number()),
+  winnerTeam: v.optional(teamSummary),
+  advancementMethod: v.optional(advancementMethod),
 });
 
 const publicKnockoutBracketResult = v.object({
@@ -163,6 +172,9 @@ async function getTeamMap(ctx: QueryCtx, matches: Doc<"matches">[]) {
   for (const match of matches) {
     teamIds.add(match.homeTeamId);
     teamIds.add(match.awayTeamId);
+    if (match.winnerTeamId) {
+      teamIds.add(match.winnerTeamId);
+    }
   }
 
   const teams = await Promise.all([...teamIds].map((teamId) => ctx.db.get(teamId)));
@@ -188,6 +200,24 @@ function isScoredMatch(match: Doc<"matches">): match is ScoredMatch {
     match.awayScore !== undefined;
 }
 
+function summarizeTeam(team: Doc<"teams">) {
+  return {
+    id: team._id,
+    code: team.code,
+    name: getSpanishTeamName(team.code, team.name),
+    flagEmoji: team.flagEmoji,
+  };
+}
+
+function getExplicitWinnerTeam(match: Doc<"matches">, teamById: Map<Id<"teams">, Doc<"teams">>) {
+  if (!match.winnerTeamId) {
+    return undefined;
+  }
+
+  const winnerTeam = teamById.get(match.winnerTeamId);
+  return winnerTeam ? summarizeTeam(winnerTeam) : undefined;
+}
+
 function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, Doc<"teams">>) {
   const homeTeam = teamById.get(match.homeTeamId);
   const awayTeam = teamById.get(match.awayTeamId);
@@ -199,15 +229,19 @@ function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, 
     matchId: Id<"matches">;
     kickoffAt: number;
     stageLabel: string;
+    matchNumber?: number;
     status: "scheduled" | "live" | "finished";
     homeTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
     awayTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
     homeScore?: number;
     awayScore?: number;
+    winnerTeam?: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
+    advancementMethod?: "regularTime" | "extraTime" | "penalties";
   } = {
     matchId: match._id,
     kickoffAt: match.kickoffAt,
     stageLabel: getSpanishStageLabel(match.stageLabel),
+    matchNumber: match.matchNumber,
     status: match.status,
     homeTeam: {
       id: homeTeam._id,
@@ -226,6 +260,14 @@ function summarizePublicMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, 
   if (isScoredMatch(match)) {
     summary.homeScore = normalizeSoccerScore(match.homeScore);
     summary.awayScore = normalizeSoccerScore(match.awayScore);
+  }
+
+  const winnerTeam = getExplicitWinnerTeam(match, teamById);
+  if (winnerTeam) {
+    summary.winnerTeam = winnerTeam;
+  }
+  if (match.advancementMethod) {
+    summary.advancementMethod = match.advancementMethod;
   }
 
   return summary;
@@ -250,6 +292,8 @@ function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">
     awayTeam: { id: Id<"teams">; code: string; name: string; flagEmoji?: string; groupCode?: string; worldRanking?: number };
     homeScore?: number;
     awayScore?: number;
+    winnerTeam?: { id: Id<"teams">; code: string; name: string; flagEmoji?: string };
+    advancementMethod?: "regularTime" | "extraTime" | "penalties";
   } = {
     matchId: match._id,
     kickoffAt: match.kickoffAt,
@@ -279,6 +323,14 @@ function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">
   if (isScoredMatch(match)) {
     summary.homeScore = normalizeSoccerScore(match.homeScore);
     summary.awayScore = normalizeSoccerScore(match.awayScore);
+  }
+
+  const winnerTeam = getExplicitWinnerTeam(match, teamById);
+  if (winnerTeam) {
+    summary.winnerTeam = winnerTeam;
+  }
+  if (match.advancementMethod) {
+    summary.advancementMethod = match.advancementMethod;
   }
 
   return summary;
@@ -349,6 +401,43 @@ function summarizeHomeMatch(
   }
 
   return summary;
+}
+
+function getScoreWinnerTeamId(match: Doc<"matches">, homeScore: number, awayScore: number) {
+  if (homeScore > awayScore) {
+    return match.homeTeamId;
+  }
+  if (awayScore > homeScore) {
+    return match.awayTeamId;
+  }
+  return undefined;
+}
+
+function validateAdvancementArgs(
+  match: Doc<"matches">,
+  homeScore: number,
+  awayScore: number,
+  status: "live" | "finished",
+  winnerTeamId?: Id<"teams">,
+  method?: "regularTime" | "extraTime" | "penalties",
+) {
+  if (status !== "finished" || !isKnockoutMatch(match)) {
+    return {};
+  }
+
+  const scoreWinnerTeamId = getScoreWinnerTeamId(match, homeScore, awayScore);
+  if (scoreWinnerTeamId) {
+    return { winnerTeamId: scoreWinnerTeamId, advancementMethod: "regularTime" as const };
+  }
+
+  if (!winnerTeamId || (winnerTeamId !== match.homeTeamId && winnerTeamId !== match.awayTeamId)) {
+    throw new Error("Winner team is required for a tied knockout match");
+  }
+  if (!method || method === "regularTime") {
+    throw new Error("Extra time or penalties is required for a tied knockout match");
+  }
+
+  return { winnerTeamId, advancementMethod: method };
 }
 
 export const getPublicDashboardMatches = query({
@@ -427,12 +516,16 @@ export const updateMatchScore = mutation({
     matchId: v.id("matches"),
     homeScore: v.number(),
     awayScore: v.number(),
+    winnerTeamId: v.optional(v.id("teams")),
+    advancementMethod: v.optional(advancementMethod),
     status: v.union(v.literal("live"), v.literal("finished")),
   },
   returns: v.object({
     matchId: v.id("matches"),
     homeScore: v.number(),
     awayScore: v.number(),
+    winnerTeamId: v.optional(v.id("teams")),
+    advancementMethod: v.optional(advancementMethod),
     status: v.union(v.literal("live"), v.literal("finished")),
   }),
   handler: async (ctx, args) => {
@@ -451,10 +544,13 @@ export const updateMatchScore = mutation({
       throw new Error("Match not found");
     }
 
+    const advancement = validateAdvancementArgs(match, homeScore, awayScore, args.status, args.winnerTeamId, args.advancementMethod);
+
     await ctx.db.patch(args.matchId, {
       homeScore: BigInt(homeScore),
       awayScore: BigInt(awayScore),
       status: args.status,
+      ...advancement,
     });
 
     return {
@@ -462,6 +558,7 @@ export const updateMatchScore = mutation({
       homeScore,
       awayScore,
       status: args.status,
+      ...advancement,
     };
   },
 });
@@ -574,12 +671,16 @@ export const updateMatchScoreWithOperatorSession = mutation({
     matchId: v.id("matches"),
     homeScore: v.number(),
     awayScore: v.number(),
+    winnerTeamId: v.optional(v.id("teams")),
+    advancementMethod: v.optional(advancementMethod),
     status: v.union(v.literal("live"), v.literal("finished")),
   },
   returns: v.object({
     matchId: v.id("matches"),
     homeScore: v.number(),
     awayScore: v.number(),
+    winnerTeamId: v.optional(v.id("teams")),
+    advancementMethod: v.optional(advancementMethod),
     status: v.union(v.literal("live"), v.literal("finished")),
   }),
   handler: async (ctx, args) => {
@@ -600,10 +701,13 @@ export const updateMatchScoreWithOperatorSession = mutation({
       throw new Error("Only live matches can be updated");
     }
 
+    const advancement = validateAdvancementArgs(match, homeScore, awayScore, args.status, args.winnerTeamId, args.advancementMethod);
+
     await ctx.db.patch(args.matchId, {
       homeScore: BigInt(homeScore),
       awayScore: BigInt(awayScore),
       status: args.status,
+      ...advancement,
     });
 
     return {
@@ -611,6 +715,7 @@ export const updateMatchScoreWithOperatorSession = mutation({
       homeScore,
       awayScore,
       status: args.status,
+      ...advancement,
     };
   },
 });

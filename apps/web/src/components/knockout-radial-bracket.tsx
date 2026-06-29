@@ -29,6 +29,13 @@ export type KnockoutBracketMatch = {
   };
   homeScore?: number;
   awayScore?: number;
+  winnerTeam?: {
+    id?: string;
+    code: string;
+    name: string;
+    flagEmoji?: string;
+  };
+  advancementMethod?: "regularTime" | "extraTime" | "penalties";
 };
 
 type BracketSlot = {
@@ -146,7 +153,15 @@ function teamFromCalendar(team: KnockoutBracketMatch["homeTeam"]): TeamLike {
 }
 
 function getMatchWinner(match: KnockoutBracketMatch): TeamLike | undefined {
-  if (match.status !== "finished" || match.homeScore === undefined || match.awayScore === undefined || match.homeScore === match.awayScore) {
+  if (match.status !== "finished") {
+    return undefined;
+  }
+
+  if (match.winnerTeam) {
+    return teamFromCalendar(match.winnerTeam);
+  }
+
+  if (match.homeScore === undefined || match.awayScore === undefined || match.homeScore === match.awayScore) {
     return undefined;
   }
 
@@ -308,6 +323,29 @@ function formatScore(match: BracketMatch) {
   }
 
   return `${match.homeScore}-${match.awayScore}`;
+}
+
+function advancementMethodLabel(method: KnockoutBracketMatch["advancementMethod"] | undefined, t: AppCopy["calendar"]) {
+  if (method === "extraTime") {
+    return "tiempo extra";
+  }
+  if (method === "penalties") {
+    return "penales";
+  }
+  if (method === "regularTime") {
+    return t.score90.toLowerCase();
+  }
+  return undefined;
+}
+
+function formatAdvancement(match: BracketMatch, t: AppCopy["calendar"]) {
+  if (!match.winner) {
+    return t.pending;
+  }
+
+  const method = advancementMethodLabel(match.sourceMatch?.advancementMethod, t);
+  const teamLabel = `${match.winner.flagEmoji ?? ""} ${match.winner.teamName}`;
+  return method ? `${teamLabel} · ${method}` : teamLabel;
 }
 
 function roundLabel(t: AppCopy["calendar"], round: KnockoutRound) {
@@ -692,7 +730,7 @@ function MatchDetailCard({ match, onClose }: { match: LayoutMatch; onClose?: () 
       <div className="mt-4 grid gap-2 rounded-[1rem] border border-border/70 bg-background/80 p-3 text-sm font-semibold">
         <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.status}</span><span>{statusLabel(match, t.calendar, t.home)}</span></div>
         <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.score90}</span><span>{formatScore(match)}</span></div>
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.advances}</span><span>{match.winner ? `${match.winner.flagEmoji ?? ""} ${match.winner.teamName}` : t.calendar.pending}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.advances}</span><span>{formatAdvancement(match, t.calendar)}</span></div>
         <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.venue}</span><span>{match.city}</span></div>
         <div className="flex justify-between gap-3"><span className="text-muted-foreground">{t.calendar.date}</span><span>{match.dateLabel}</span></div>
       </div>

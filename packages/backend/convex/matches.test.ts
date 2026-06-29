@@ -280,6 +280,56 @@ describe("matches.listHomeMatches", () => {
     expect(match).toMatchObject({ homeScore: 1n, awayScore: 0n, status: "live" });
   });
 
+  it("stores knockout advancement separately from the 90-minute score", async () => {
+    const t = createTest();
+    process.env.ENABLE_MATCH_MANAGEMENT = "true";
+    const { argentinaId, brazilId } = await seedTeams(t);
+    const matchId = await t.run((ctx) =>
+      ctx.db.insert("matches", {
+        awayTeamId: brazilId,
+        homeTeamId: argentinaId,
+        kickoffAt: NOW,
+        matchNumber: 74,
+        stageLabel: "Round of 32",
+        status: "live",
+        homeScore: 1n,
+        awayScore: 1n,
+      }),
+    );
+
+    await expect(t.mutation(api.matches.updateMatchScore, {
+      matchId,
+      homeScore: 1,
+      awayScore: 1,
+      status: "finished",
+    })).rejects.toThrow("Winner team is required");
+
+    await expect(t.mutation(api.matches.updateMatchScore, {
+      matchId,
+      homeScore: 1,
+      awayScore: 1,
+      status: "finished",
+      winnerTeamId: brazilId,
+      advancementMethod: "penalties",
+    })).resolves.toEqual({
+      matchId,
+      homeScore: 1,
+      awayScore: 1,
+      status: "finished",
+      winnerTeamId: brazilId,
+      advancementMethod: "penalties",
+    });
+
+    const match = await t.run((ctx) => ctx.db.get(matchId));
+    expect(match).toMatchObject({
+      homeScore: 1n,
+      awayScore: 1n,
+      status: "finished",
+      winnerTeamId: brazilId,
+      advancementMethod: "penalties",
+    });
+  });
+
   it("returns only the minimal knockout bracket data for the public home preview", async () => {
     const t = createTest();
     const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
