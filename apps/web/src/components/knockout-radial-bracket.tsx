@@ -1,5 +1,5 @@
 import { Button } from "@quiniela-mundial-2026/ui/components/button";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 
 import type { CalendarMatch, GroupStandingRow } from "@/lib/calendar-groups";
@@ -41,6 +41,9 @@ const FIRST_ROUND_PAIR_SPREAD = 5.8;
 const FIRST_ROUND_RADIUS = 448;
 
 const FLAG_RADIUS = 30;
+const FLAG_HIT_RADIUS = 46;
+const NODE_HIT_RADIUS = 18;
+const ADVANCED_FLAG_OFFSET = 31;
 
 const ROUND_RADIUS: Record<KnockoutRound, number> = {
   "round-of-32": FIRST_ROUND_RADIUS,
@@ -296,6 +299,10 @@ function statusLabel(match: BracketMatch) {
   return KNOCKOUT_ROUND_LABELS[match.round];
 }
 
+function matchHoverLabel(match: BracketMatch) {
+  return `${match.id} · ${KNOCKOUT_ROUND_LABELS[match.round]} · ${shortName(match.home.team)} vs ${shortName(match.away.team)}`;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -362,11 +369,17 @@ function slotConnectorPath(angle: number, match: LayoutMatch) {
   return `M ${hub.x} ${hub.y} L ${stem.x} ${stem.y} ${arc} L ${flagEdge.x} ${flagEdge.y}`;
 }
 
-function SlotMarker({ angle, match, selected, slot }: { angle: number; match: LayoutMatch; selected?: boolean; slot: BracketSlot }) {
+function advancedFlagPoint(source: LayoutMatch) {
+  return polar(source.angle, source.radius - ADVANCED_FLAG_OFFSET);
+}
+
+function SlotMarker({ angle, match, onSelect, selected, slot }: { angle: number; match: LayoutMatch; onSelect: () => void; selected?: boolean; slot: BracketSlot }) {
   const point = polar(angle, OUTER_FLAG_RADIUS);
   const isLoser = match.status === "finished" && Boolean(match.winner && slot.team && match.winner.teamCode !== slot.team.teamCode);
   return (
-    <g className="cursor-pointer" onClick={() => undefined}>
+    <g className="cursor-pointer" onClick={onSelect}>
+      <title>{matchHoverLabel(match)}</title>
+      <circle cx={point.x} cy={point.y} fill="#000" opacity="0.001" pointerEvents="all" r={FLAG_HIT_RADIUS} />
       <path d={slotConnectorPath(angle, match)} fill="none" stroke={selected ? "#f7d66a" : "#56534c"} strokeLinecap="round" strokeLinejoin="round" strokeWidth={selected ? 3 : 2} />
       <FlagBadge dimmed={isLoser} point={point} selected={selected} team={slot.team} />
     </g>
@@ -416,6 +429,7 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [selectedMatchId, setSelectedMatchId] = useState("M73");
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const pointersRef = useRef(new Map<number, Point>());
   const pinchRef = useRef<{ distance: number; pan: Point; zoom: number } | null>(null);
   const panRef = useRef<{ pan: Point; pointerId: number; start: Point } | null>(null);
@@ -426,6 +440,11 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
   const zoomAt = (nextZoom: number, focal: Point) => {
     setPan((currentPan) => focalPan(currentPan, zoom, nextZoom, focal));
     setZoom(nextZoom);
+  };
+
+  const selectMatch = (matchId: string) => {
+    setSelectedMatchId(matchId);
+    setMobileDetailOpen(true);
   };
 
   return (
@@ -446,7 +465,8 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
-        <div
+        <div className="relative min-w-0">
+          <div
           className="touch-none overflow-hidden rounded-[1.5rem] border border-[#37332d] bg-[#090909] shadow-[0_24px_80px_-50px_rgba(0,0,0,0.95)]"
           onPointerDown={(event) => {
             const point = pointerPoint(event);
@@ -455,10 +475,11 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
               const [first, second] = [...pointersRef.current.values()];
               pinchRef.current = { distance: pointerDistance(first, second), pan, zoom };
               panRef.current = null;
+              event.currentTarget.setPointerCapture(event.pointerId);
             } else if (zoom > 1) {
               panRef.current = { pan, pointerId: event.pointerId, start: point };
+              event.currentTarget.setPointerCapture(event.pointerId);
             }
-            event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => {
             if (!pointersRef.current.has(event.pointerId)) {
@@ -498,8 +519,7 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
             zoomAt(nextZoom, toSvgPoint({ x: event.clientX - rect.left, y: event.clientY - rect.top }, event.currentTarget));
           }}
         >
-          <svg className="h-[56vh] min-h-[340px] w-full max-h-[540px] select-none" role="img" viewBox="0 0 1200 1200">
-            <title>Bracket radial de eliminatorias con banderas</title>
+          <svg aria-label="Bracket radial de eliminatorias" className="h-[56vh] min-h-[340px] w-full max-h-[540px] select-none" role="img" viewBox="0 0 1200 1200">
             <defs>
               <radialGradient id="cup-glow" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#f7d66a" stopOpacity="0.76" />
@@ -517,11 +537,13 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
                 const isSelected = selectedMatch?.id === match.id;
                 const active = Boolean(match.winner) || isSelected;
                 return (
-                  <g key={`${match.id}-incoming`} className="cursor-pointer" onClick={() => setSelectedMatchId(match.id)}>
+                  <g key={`${match.id}-incoming`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
+                    <title>{matchHoverLabel(match)}</title>
+                    <circle cx={match.x} cy={match.y} fill="#000" opacity="0.001" pointerEvents="all" r={NODE_HIT_RADIUS} />
                     {match.round === "round-of-32" ? (
                       <>
-                        <SlotMarker angle={match.angle - FIRST_ROUND_PAIR_SPREAD} match={match} selected={isSelected} slot={match.home} />
-                        <SlotMarker angle={match.angle + FIRST_ROUND_PAIR_SPREAD} match={match} selected={isSelected} slot={match.away} />
+                        <SlotMarker angle={match.angle - FIRST_ROUND_PAIR_SPREAD} match={match} onSelect={() => selectMatch(match.id)} selected={isSelected} slot={match.home} />
+                        <SlotMarker angle={match.angle + FIRST_ROUND_PAIR_SPREAD} match={match} onSelect={() => selectMatch(match.id)} selected={isSelected} slot={match.away} />
                       </>
                     ) : null}
                     {getSourceIds(match).map((sourceId) => {
@@ -555,38 +577,94 @@ export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] })
 
               {layout.map((match) => {
                 const isSelected = selectedMatch?.id === match.id;
-                const winnerPoint = polar(match.angle, match.radius - (match.round === "round-of-32" ? 31 : 0));
-                const displayTeam = match.winner;
+                const nodePoint = polar(match.angle, match.radius);
+                const hasNodeTarget = match.round !== "round-of-32";
 
                 return (
-                  <g key={`${match.id}-node`} className="cursor-pointer" onClick={() => setSelectedMatchId(match.id)}>
-                    {displayTeam ? <FlagBadge point={winnerPoint} selected={isSelected} team={displayTeam} winner={Boolean(match.winner)} /> : null}
+                  <g key={`${match.id}-node`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
+                    <title>{matchHoverLabel(match)}</title>
+                    {hasNodeTarget ? <circle cx={nodePoint.x} cy={nodePoint.y} fill="#000" opacity="0.001" pointerEvents="all" r={NODE_HIT_RADIUS} /> : null}
                     {isSelected ? (
-                      <text dominantBaseline="middle" fill="#f7d66a" fontSize="12" fontWeight="900" letterSpacing="1.5" textAnchor="middle" x={winnerPoint.x} y={winnerPoint.y + 32}>{match.id}</text>
+                      <text dominantBaseline="middle" fill="#f7d66a" fontSize="12" fontWeight="900" letterSpacing="1.5" textAnchor="middle" x={nodePoint.x} y={nodePoint.y + 32}>{match.id}</text>
                     ) : null}
                   </g>
                 );
               })}
+
+              {layout.flatMap((match) => {
+                if (match.round === "round-of-32") {
+                  return [];
+                }
+
+                return ([
+                  { key: "home", slot: match.homeSlot, team: match.home.team },
+                  { key: "away", slot: match.awaySlot, team: match.away.team },
+                ] as const).flatMap(({ key, slot, team }) => {
+                  if (!team || slot.kind !== "winner") {
+                    return [];
+                  }
+
+                  const source = matchById.get(slot.sourceId);
+                  if (!source) {
+                    return [];
+                  }
+
+                  const point = advancedFlagPoint(source);
+                  const isSelected = selectedMatch?.id === match.id;
+
+                  return [
+                    <g key={`${match.id}-${key}-advanced`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
+                      <title>{matchHoverLabel(match)}</title>
+                      <circle cx={point.x} cy={point.y} fill="#000" opacity="0.001" pointerEvents="all" r={FLAG_HIT_RADIUS} />
+                      <FlagBadge point={point} selected={isSelected} team={team} />
+                    </g>,
+                  ];
+                });
+              })}
             </g>
           </svg>
+          </div>
+
+          {selectedMatch && mobileDetailOpen ? (
+            <div className="absolute inset-x-3 bottom-3 z-10 xl:hidden" onPointerDown={(event) => event.stopPropagation()}>
+              <MatchDetailCard match={selectedMatch} onClose={() => setMobileDetailOpen(false)} />
+            </div>
+          ) : null}
         </div>
 
         {selectedMatch ? (
-          <aside className="rounded-[1.35rem] border border-border/70 bg-card/95 p-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)]">
-            <p className="text-[0.68rem] font-black tracking-[0.18em] text-primary uppercase">{selectedMatch.id} · {KNOCKOUT_ROUND_LABELS[selectedMatch.round]}</p>
-            <h3 className="mt-2 font-display text-2xl font-extrabold tracking-[-0.04em] text-foreground">
-              {selectedMatch.home.team?.flagEmoji ?? "◦"} {shortName(selectedMatch.home.team)} <span className="text-muted-foreground">vs</span> {selectedMatch.away.team?.flagEmoji ?? "◦"} {shortName(selectedMatch.away.team)}
-            </h3>
-            <div className="mt-4 grid gap-2 rounded-[1rem] border border-border/70 bg-background/80 p-3 text-sm font-semibold">
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Estado</span><span>{statusLabel(selectedMatch)}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Marcador 90'</span><span>{formatScore(selectedMatch)}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Avanza</span><span>{selectedMatch.winner ? `${selectedMatch.winner.flagEmoji ?? ""} ${selectedMatch.winner.teamName}` : "Pendiente"}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Sede</span><span>{selectedMatch.city}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Fecha</span><span>{selectedMatch.dateLabel}</span></div>
-            </div>
+          <aside className="hidden xl:block">
+            <MatchDetailCard match={selectedMatch} />
           </aside>
         ) : null}
       </div>
     </div>
+  );
+}
+
+function MatchDetailCard({ match, onClose }: { match: LayoutMatch; onClose?: () => void }) {
+  return (
+    <article className="rounded-[1.35rem] border border-border/70 bg-card/95 p-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)] backdrop-blur-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-black tracking-[0.18em] text-primary uppercase">{match.id} · {KNOCKOUT_ROUND_LABELS[match.round]}</p>
+          <h3 className="mt-2 font-display text-xl font-extrabold tracking-[-0.04em] text-foreground xl:text-2xl">
+            {match.home.team?.flagEmoji ?? "◦"} {shortName(match.home.team)} <span className="text-muted-foreground">vs</span> {match.away.team?.flagEmoji ?? "◦"} {shortName(match.away.team)}
+          </h3>
+        </div>
+        {onClose ? (
+          <button aria-label="Cerrar detalle" className="rounded-full border border-border/70 bg-background/80 p-2 text-muted-foreground transition hover:text-foreground" type="button" onClick={onClose}>
+            <X className="size-4" />
+          </button>
+        ) : null}
+      </div>
+      <div className="mt-4 grid gap-2 rounded-[1rem] border border-border/70 bg-background/80 p-3 text-sm font-semibold">
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Estado</span><span>{statusLabel(match)}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Marcador 90'</span><span>{formatScore(match)}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Avanza</span><span>{match.winner ? `${match.winner.flagEmoji ?? ""} ${match.winner.teamName}` : "Pendiente"}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Sede</span><span>{match.city}</span></div>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Fecha</span><span>{match.dateLabel}</span></div>
+      </div>
+    </article>
   );
 }
