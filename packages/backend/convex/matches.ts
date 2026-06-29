@@ -90,6 +90,23 @@ const publicCalendarResult = v.object({
   matches: v.array(publicCalendarMatch),
 });
 
+const publicKnockoutBracketMatch = v.object({
+  matchId: v.id("matches"),
+  kickoffAt: v.number(),
+  stageLabel: v.string(),
+  matchNumber: v.number(),
+  venue: v.optional(v.string()),
+  status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
+  homeTeam: teamSummary,
+  awayTeam: teamSummary,
+  homeScore: v.optional(v.number()),
+  awayScore: v.optional(v.number()),
+});
+
+const publicKnockoutBracketResult = v.object({
+  matches: v.array(publicKnockoutBracketMatch),
+});
+
 const manageableMatchesResult = v.object({
   matches: v.array(publicMatchSummary),
 });
@@ -267,6 +284,24 @@ function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">
   return summary;
 }
 
+function summarizeKnockoutBracketMatch(match: Doc<"matches">, teamById: Map<Id<"teams">, Doc<"teams">>) {
+  const matchNumber = match.matchNumber;
+  if (matchNumber === undefined || !isKnockoutMatch(match)) {
+    return null;
+  }
+
+  const publicSummary = summarizePublicMatch(match, teamById);
+  if (!publicSummary) {
+    return null;
+  }
+
+  return {
+    ...publicSummary,
+    matchNumber,
+    venue: match.venue,
+  };
+}
+
 function summarizeHomeMatch(
   match: Doc<"matches">,
   teamById: Map<Id<"teams">, Doc<"teams">>,
@@ -362,6 +397,25 @@ export const getPublicCalendar = query({
     return {
       matches: matches.flatMap((match) => {
         const summary = summarizeCalendarMatch(match, teamById);
+        return summary ? [summary] : [];
+      }),
+    };
+  },
+});
+
+export const getPublicKnockoutBracket = query({
+  args: {},
+  returns: publicKnockoutBracketResult,
+  handler: async (ctx) => {
+    const knockoutMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_match_number", (q) => q.gte("matchNumber", 73))
+      .collect();
+    const teamById = await getTeamMap(ctx, knockoutMatches);
+
+    return {
+      matches: knockoutMatches.flatMap((match) => {
+        const summary = summarizeKnockoutBracketMatch(match, teamById);
         return summary ? [summary] : [];
       }),
     };

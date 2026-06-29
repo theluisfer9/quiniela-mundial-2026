@@ -6,7 +6,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { CalendarDays, Clock, Flame, ListOrdered, Target, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import { PinEntryForm } from "@/components/pin-entry-form";
 import { ShareStandingsExport } from "@/components/share-standings-export";
@@ -27,6 +27,10 @@ import {
   type PublicDashboardMatch,
   type PublicDashboardStatCard,
 } from "@/lib/public-dashboard";
+
+const LazyKnockoutRadialBracket = lazy(() =>
+  import("@/components/knockout-radial-bracket").then((module) => ({ default: module.KnockoutRadialBracket })),
+);
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -178,6 +182,7 @@ function HomeComponent() {
             revealPredictions
           />
           <PublicStandings liveMatches={dashboard.liveMatches} rows={dashboard.standings} />
+          <HomeKnockoutPreview />
           {homeMatchSections.todayMatches.length > 0 ? (
             <MatchGroup
               eyebrow={t.home.todayGroupEyebrow}
@@ -203,6 +208,66 @@ function HomeComponent() {
           />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function useLoadWhenNear() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    if (shouldLoad) {
+      return;
+    }
+
+    const element = ref.current;
+    if (!element || typeof IntersectionObserver === "undefined") {
+      setShouldLoad(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "480px 0px" },
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [shouldLoad]);
+
+  return { ref, shouldLoad };
+}
+
+function HomeKnockoutPreview() {
+  const { t } = useI18n();
+  const { ref, shouldLoad } = useLoadWhenNear();
+  const bracket = useQuery(api.matches.getPublicKnockoutBracket, shouldLoad ? {} : "skip");
+  const matches = bracket?.matches ?? [];
+
+  return (
+    <div ref={ref}>
+      <AppSection
+        eyebrow={t.calendar.knockoutEyebrow}
+        title={t.calendar.knockoutTitle}
+        className="min-w-0 border-primary/15 bg-card/98"
+        contentClassName="min-w-0"
+      >
+        {!shouldLoad || bracket === undefined ? (
+          <p className="rounded-[1.25rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">{t.calendar.loading}</p>
+        ) : matches.length === 0 ? (
+          <p className="rounded-[1.25rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">{t.calendar.empty}</p>
+        ) : (
+          <Suspense fallback={<p className="rounded-[1.25rem] border border-border/70 bg-background/80 px-4 py-4 text-sm text-muted-foreground">{t.calendar.loading}</p>}>
+            <LazyKnockoutRadialBracket matches={matches} />
+          </Suspense>
+        )}
+      </AppSection>
     </div>
   );
 }

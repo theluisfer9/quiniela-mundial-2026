@@ -2,11 +2,34 @@ import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 
-import type { CalendarMatch, GroupStandingRow } from "@/lib/calendar-groups";
+import type { GroupStandingRow } from "@/lib/calendar-groups";
 import { KNOCKOUT_MATCHES, type KnockoutMatch, type KnockoutRound, type KnockoutSlot } from "@/lib/knockout-bracket";
 import { useI18n, type AppCopy } from "@/lib/i18n";
 
 type TeamLike = Pick<GroupStandingRow, "flagEmoji" | "teamCode" | "teamName">;
+
+export type KnockoutBracketMatch = {
+  matchId: string;
+  kickoffAt: number;
+  stageLabel: string;
+  matchNumber?: number;
+  venue?: string;
+  status: "scheduled" | "live" | "finished";
+  homeTeam: {
+    id?: string;
+    code: string;
+    name: string;
+    flagEmoji?: string;
+  };
+  awayTeam: {
+    id?: string;
+    code: string;
+    name: string;
+    flagEmoji?: string;
+  };
+  homeScore?: number;
+  awayScore?: number;
+};
 
 type BracketSlot = {
   label: string;
@@ -16,10 +39,10 @@ type BracketSlot = {
 type BracketMatch = KnockoutMatch & {
   home: BracketSlot;
   away: BracketSlot;
-  status?: CalendarMatch["status"];
+  status?: KnockoutBracketMatch["status"];
   homeScore?: number;
   awayScore?: number;
-  sourceMatch?: CalendarMatch;
+  sourceMatch?: KnockoutBracketMatch;
   winner?: TeamLike;
 };
 
@@ -114,7 +137,7 @@ const FLAG_CODES: Record<string, string> = {
   USA: "us",
 };
 
-function teamFromCalendar(team: CalendarMatch["homeTeam"]): TeamLike {
+function teamFromCalendar(team: KnockoutBracketMatch["homeTeam"]): TeamLike {
   return {
     flagEmoji: team.flagEmoji,
     teamCode: team.code,
@@ -122,7 +145,7 @@ function teamFromCalendar(team: CalendarMatch["homeTeam"]): TeamLike {
   };
 }
 
-function getMatchWinner(match: CalendarMatch): TeamLike | undefined {
+function getMatchWinner(match: KnockoutBracketMatch): TeamLike | undefined {
   if (match.status !== "finished" || match.homeScore === undefined || match.awayScore === undefined || match.homeScore === match.awayScore) {
     return undefined;
   }
@@ -130,7 +153,7 @@ function getMatchWinner(match: CalendarMatch): TeamLike | undefined {
   return teamFromCalendar(match.homeScore > match.awayScore ? match.homeTeam : match.awayTeam);
 }
 
-function slotFromTeam(team: CalendarMatch["homeTeam"]): BracketSlot {
+function slotFromTeam(team: KnockoutBracketMatch["homeTeam"]): BracketSlot {
   return { label: team.code, team: teamFromCalendar(team) };
 }
 
@@ -138,8 +161,8 @@ function shortName(team: TeamLike | undefined, fallback: string) {
   return team?.teamCode ?? fallback;
 }
 
-function buildBracketMatches(matches: CalendarMatch[]) {
-  const calendarById = new Map<string, CalendarMatch>(matches.flatMap((match) => match.matchNumber ? [[`M${match.matchNumber}`, match] as const] : []));
+function buildBracketMatches(matches: KnockoutBracketMatch[]) {
+  const calendarById = new Map<string, KnockoutBracketMatch>(matches.flatMap((match) => match.matchNumber ? [[`M${match.matchNumber}`, match] as const] : []));
   const resolvedById = new Map<string, BracketMatch>();
 
   const resolveSlot = (slot: KnockoutSlot): BracketSlot => {
@@ -430,7 +453,7 @@ function focalPan(previousPan: Point, previousZoom: number, nextZoom: number, fo
   };
 }
 
-export function KnockoutRadialBracket({ matches }: { matches: CalendarMatch[] }) {
+export function KnockoutRadialBracket({ matches }: { matches: KnockoutBracketMatch[] }) {
   const { t } = useI18n();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });

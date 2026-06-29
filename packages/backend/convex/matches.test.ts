@@ -279,6 +279,63 @@ describe("matches.listHomeMatches", () => {
     const match = await t.run((ctx) => ctx.db.get(matchId));
     expect(match).toMatchObject({ homeScore: 1n, awayScore: 0n, status: "live" });
   });
+
+  it("returns only the minimal knockout bracket data for the public home preview", async () => {
+    const t = createTest();
+    const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
+    const groupMatchId = await t.run((ctx) =>
+      ctx.db.insert("matches", {
+        awayTeamId: mexicoId,
+        homeTeamId: argentinaId,
+        kickoffAt: NOW,
+        matchNumber: 12,
+        stageLabel: "Group A",
+        status: "scheduled",
+        venue: "Group Venue",
+      }),
+    );
+    const knockoutMatchId = await t.run((ctx) =>
+      ctx.db.insert("matches", {
+        awayScore: 1n,
+        awayTeamId: brazilId,
+        homeScore: 2n,
+        homeTeamId: argentinaId,
+        kickoffAt: NOW + 60_000,
+        matchNumber: 73,
+        stageLabel: "Round of 32",
+        status: "finished",
+        venue: "Knockout Venue",
+      }),
+    );
+
+    const result = await t.query(api.matches.getPublicKnockoutBracket, {});
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]).toEqual({
+      awayScore: 1,
+      awayTeam: {
+        code: "BRA",
+        flagEmoji: "BRA",
+        id: brazilId,
+        name: "Brasil",
+      },
+      homeScore: 2,
+      homeTeam: {
+        code: "ARG",
+        flagEmoji: "ARG",
+        id: argentinaId,
+        name: "Argentina",
+      },
+      kickoffAt: NOW + 60_000,
+      matchId: knockoutMatchId,
+      matchNumber: 73,
+      stageLabel: "16avos",
+      status: "finished",
+      venue: "Knockout Venue",
+    });
+    expect(result.matches.map((match: { matchId: string }) => match.matchId)).not.toContain(groupMatchId);
+    expect("groupCode" in result.matches[0]).toBe(false);
+  });
 });
 
 describe("matches.markStartedMatchesLive", () => {

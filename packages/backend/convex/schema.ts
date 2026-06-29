@@ -77,6 +77,7 @@ export default defineSchema({
     status: v.union(v.literal("scheduled"), v.literal("live"), v.literal("finished")),
   })
     .index("by_kickoff_at", ["kickoffAt"])
+    .index("by_match_number", ["matchNumber"])
     .index("by_status_kickoff_at", ["status", "kickoffAt"]),
 
   matchDisciplineEvents: defineTable({
