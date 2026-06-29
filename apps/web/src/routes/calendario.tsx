@@ -7,6 +7,7 @@ import { useConvex } from "convex/react";
 import { CalendarDays, ListOrdered, Trophy } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { KnockoutRadialBracket } from "@/components/knockout-radial-bracket";
 import {
   buildCalendarDaySections,
   buildGroupStandings,
@@ -17,14 +18,7 @@ import {
   type GroupStanding,
 } from "@/lib/calendar-groups";
 import { useI18n } from "@/lib/i18n";
-import {
-  KNOCKOUT_MATCHES,
-  KNOCKOUT_ROUND_LABELS,
-  KNOCKOUT_ROUNDS,
-  resolveKnockoutRound,
-  type ResolvedKnockoutSlot,
-  type KnockoutRound,
-} from "@/lib/knockout-bracket";
+import { getDevCalendarPreviewMatches } from "@/lib/dev-calendar-preview";
 import { localizeStageLabel, localizeTeamName } from "@/lib/team-i18n";
 
 export const Route = createFileRoute("/calendario")({
@@ -48,19 +42,35 @@ function CalendarRoute() {
 
   useEffect(() => {
     let isCurrent = true;
+    const devPreviewTimeout = import.meta.env.DEV
+      ? window.setTimeout(() => {
+          if (isCurrent) {
+            setData({ matches: getDevCalendarPreviewMatches() });
+          }
+        }, 1_500)
+      : undefined;
 
     void convex.query(api.matches.getPublicCalendar, {}).then((calendar) => {
       if (isCurrent) {
+        if (devPreviewTimeout !== undefined) {
+          window.clearTimeout(devPreviewTimeout);
+        }
         setData(calendar as CalendarData);
       }
     }).catch(() => {
       if (isCurrent) {
+        if (devPreviewTimeout !== undefined) {
+          window.clearTimeout(devPreviewTimeout);
+        }
         setData({ matches: [] });
       }
     });
 
     return () => {
       isCurrent = false;
+      if (devPreviewTimeout !== undefined) {
+        window.clearTimeout(devPreviewTimeout);
+      }
     };
   }, [convex]);
 
@@ -98,87 +108,24 @@ function CalendarRoute() {
       ) : activeTab === "groups" ? (
         <GroupsTab groups={groups} matches={matches} />
       ) : (
-        <KnockoutTab groups={groups} />
+        <KnockoutTab groups={groups} matches={matches} />
       )}
     </div>
   );
 }
 
-function KnockoutTab({ groups }: { groups: GroupStanding[] }) {
-  const [activeRound, setActiveRound] = useState<KnockoutRound>("round-of-32");
-  const roundMatches = resolveKnockoutRound(KNOCKOUT_MATCHES.filter((match) => match.round === activeRound), groups);
+function KnockoutTab({ groups, matches }: { groups: GroupStanding[]; matches: CalendarMatch[] }) {
+  void groups;
 
   return (
-    <div className="grid gap-4">
-      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
-        {KNOCKOUT_ROUNDS.map((round) => {
-          const isActive = round === activeRound;
-
-          return (
-            <button
-              key={round}
-              className={cn(
-                "shrink-0 rounded-full border px-4 py-2 text-sm font-black transition",
-                isActive
-                  ? "border-primary bg-primary text-primary-foreground shadow-[0_14px_26px_-20px_rgba(189,0,21,0.9)]"
-                  : "border-border/70 bg-card text-muted-foreground hover:text-foreground",
-              )}
-              type="button"
-              onClick={() => setActiveRound(round)}
-            >
-              {KNOCKOUT_ROUND_LABELS[round]}
-            </button>
-          );
-        })}
-      </div>
-      <AppSection
-        eyebrow="Eliminatorias"
-        title={KNOCKOUT_ROUND_LABELS[activeRound]}
-        description="Cruces calculados desde la tabla actual de grupos."
-        className="border-primary/15 bg-card/98"
-      >
-        <div className="grid gap-3 lg:grid-cols-2">
-          {roundMatches.map((match) => (
-            <KnockoutMatchCard key={match.id} away={match.away} city={match.city} dateLabel={match.dateLabel} home={match.home} id={match.id} />
-          ))}
-        </div>
-      </AppSection>
-    </div>
-  );
-}
-
-function KnockoutMatchCard({ away, city, dateLabel, home, id }: {
-  away: ResolvedKnockoutSlot;
-  city: string;
-  dateLabel: string;
-  home: ResolvedKnockoutSlot;
-  id: string;
-}) {
-  return (
-    <article className="rounded-[1.25rem] border border-border/70 bg-background/85 p-4 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[0.68rem] font-black tracking-[0.18em] text-primary uppercase">{id.toUpperCase()}</p>
-          <p className="mt-1 text-sm font-semibold text-muted-foreground">{dateLabel} · {city}</p>
-        </div>
-      </div>
-      <div className="mt-4 grid gap-2 rounded-[1rem] border border-border/60 bg-card/70 p-3">
-        <KnockoutTeamLine resolved={home} />
-        <KnockoutTeamLine resolved={away} />
-      </div>
-    </article>
-  );
-}
-
-function KnockoutTeamLine({ resolved }: { resolved: ResolvedKnockoutSlot }) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-3">
-      <div className="min-w-0 flex items-center gap-2">
-        {resolved.team?.flagEmoji ? <span className="text-xl">{resolved.team.flagEmoji}</span> : <span className="text-xl text-muted-foreground">-</span>}
-        <span className="truncate font-bold text-foreground">{resolved.team?.teamName ?? resolved.label}</span>
-      </div>
-      <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[0.65rem] font-black text-muted-foreground uppercase">{resolved.label}</span>
-    </div>
+    <AppSection
+      eyebrow="Eliminatorias"
+      title="Camino a la copa"
+      className="min-w-0 border-primary/15 bg-card/98"
+      contentClassName="min-w-0"
+    >
+      <KnockoutRadialBracket matches={matches} />
+    </AppSection>
   );
 }
 
@@ -186,7 +133,7 @@ function CalendarTabButton({ active, children, icon, onClick }: { active: boolea
   return (
     <button
       className={cn(
-        "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[0.9rem] px-2.5 py-2 text-xs font-black transition sm:flex-row sm:gap-2 sm:px-3 sm:text-sm [&>svg]:shrink-0",
+        "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-[0.9rem] px-1.5 py-2 text-center text-[0.68rem] font-black leading-tight transition sm:flex-row sm:gap-2 sm:px-3 sm:text-sm [&>svg]:shrink-0",
         active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
       )}
       type="button"
