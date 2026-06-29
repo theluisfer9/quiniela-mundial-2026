@@ -98,6 +98,21 @@ const markStartedMatchesLiveResult = v.object({
   updatedMatches: v.number(),
 });
 
+const knockoutFixtureInput = v.object({
+  awayTeamCode: v.string(),
+  homeTeamCode: v.string(),
+  kickoffAt: v.number(),
+  matchNumber: v.number(),
+  stageLabel: v.string(),
+  venue: v.optional(v.string()),
+});
+
+const upsertKnockoutMatchesResult = v.object({
+  insertedMatches: v.number(),
+  skippedLockedMatches: v.number(),
+  updatedMatches: v.number(),
+});
+
 type FinishedMatch = Doc<"matches"> & {
   status: "finished";
   homeScore: bigint;
@@ -109,6 +124,22 @@ type ScoredMatch = Doc<"matches"> & {
   homeScore: bigint;
   awayScore: bigint;
 };
+
+type MatchPhase = "group" | "knockout" | "overall";
+
+const phaseArg = v.optional(v.union(v.literal("group"), v.literal("knockout"), v.literal("overall")));
+
+function isKnockoutMatch(match: Doc<"matches">) {
+  return (match.matchNumber ?? 0) >= 73;
+}
+
+function filterMatchesByPhase<T extends Doc<"matches">>(matches: T[], phase: MatchPhase = "knockout") {
+  if (phase === "overall") {
+    return matches;
+  }
+
+  return matches.filter((match) => phase === "knockout" ? isKnockoutMatch(match) : !isKnockoutMatch(match));
+}
 
 async function getTeamMap(ctx: QueryCtx, matches: Doc<"matches">[]) {
   const teamIds = new Set<Id<"teams">>();
@@ -206,7 +237,7 @@ function summarizeCalendarMatch(match: Doc<"matches">, teamById: Map<Id<"teams">
     matchId: match._id,
     kickoffAt: match.kickoffAt,
     stageLabel: getSpanishStageLabel(match.stageLabel),
-    groupCode: homeTeam.groupCode ?? awayTeam.groupCode ?? null,
+    groupCode: isKnockoutMatch(match) ? null : (homeTeam.groupCode ?? awayTeam.groupCode ?? null),
     matchNumber: match.matchNumber,
     venue: match.venue,
     status: match.status,
@@ -286,18 +317,21 @@ function summarizeHomeMatch(
 }
 
 export const getPublicDashboardMatches = query({
-  args: {},
+  args: { phase: phaseArg },
   returns: publicDashboardResult,
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const now = Date.now();
     const todayKey = getGuatemalaDayKey(now);
-    const allMatches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
+    const allMatches = filterMatchesByPhase(
+      await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect(),
+      args.phase,
+    );
     const teamById = await getTeamMap(ctx, allMatches);
     const publicMatches = allMatches.flatMap((match) => {
       const summary = summarizePublicMatch(match, teamById);
       return summary ? [summary] : [];
     });
-    const scoredMatches = allMatches.filter(isScoredMatch);
+    const finishedMatches = allMatches.filter(isFinishedMatch);
 
     return {
       liveMatches: publicMatches.filter((match) => match.status === "live"),
@@ -310,7 +344,7 @@ export const getPublicDashboardMatches = query({
       finishedMatches: publicMatches.filter((match) => match.status === "finished"),
       stats: {
         leaderName: null,
-        finishedMatchCount: scoredMatches.length,
+        finishedMatchCount: finishedMatches.length,
         totalPredictionCountForFinishedMatches: 0,
         bestExactScoreCount: 0,
       },
@@ -375,6 +409,89 @@ export const updateMatchScore = mutation({
       awayScore,
       status: args.status,
     };
+  },
+});
+
+export const upsertKnockoutMatches = mutation({
+  args: {
+    confirmUpdate: v.boolean(),
+    fixtures: v.array(knockoutFixtureInput),
+  },
+  returns: upsertKnockoutMatchesResult,
+  handler: async (ctx, args) => {
+    if (!args.confirmUpdate) {
+      throw new Error("confirmUpdate must be true");
+    }
+    if (process.env.ENABLE_KNOCKOUT_FIXTURE_UPDATE !== "true") {
+      throw new Error("Knockout fixture update is not enabled");
+    }
+
+    let insertedMatches = 0;
+    let skippedLockedMatches = 0;
+    let updatedMatches = 0;
+
+    for (const fixture of args.fixtures) {
+      if (!Number.isInteger(fixture.matchNumber) || fixture.matchNumber < 73) {
+        throw new Error(`Knockout matchNumber must be >= 73: ${fixture.matchNumber}`);
+      }
+      if (!Number.isInteger(fixture.kickoffAt)) {
+        throw new Error(`kickoffAt must be an integer for match ${fixture.matchNumber}`);
+      }
+
+      const homeTeam = await ctx.db
+        .query("teams")
+        .withIndex("by_code", (q) => q.eq("code", fixture.homeTeamCode))
+        .unique();
+      if (!homeTeam) {
+        throw new Error(`Missing home team ${fixture.homeTeamCode} for match ${fixture.matchNumber}`);
+      }
+
+      const awayTeam = await ctx.db
+        .query("teams")
+        .withIndex("by_code", (q) => q.eq("code", fixture.awayTeamCode))
+        .unique();
+      if (!awayTeam) {
+        throw new Error(`Missing away team ${fixture.awayTeamCode} for match ${fixture.matchNumber}`);
+      }
+
+      const existingMatches = await ctx.db
+        .query("matches")
+        .filter((q) => q.eq(q.field("matchNumber"), fixture.matchNumber))
+        .collect();
+
+      if (existingMatches.length > 1) {
+        throw new Error(`Expected at most one match with matchNumber ${fixture.matchNumber}`);
+      }
+
+      const matchPatch = {
+        awayTeamId: awayTeam._id,
+        homeTeamId: homeTeam._id,
+        kickoffAt: fixture.kickoffAt,
+        stageLabel: fixture.stageLabel,
+        venue: fixture.venue,
+      };
+
+      const existingMatch = existingMatches[0];
+      if (!existingMatch) {
+        await ctx.db.insert("matches", {
+          ...matchPatch,
+          matchNumber: fixture.matchNumber,
+          status: "scheduled",
+        });
+        insertedMatches += 1;
+        continue;
+      }
+
+      if (existingMatch.status !== "scheduled") {
+        skippedLockedMatches += 1;
+        continue;
+      }
+
+      await ctx.db.patch(existingMatch._id, matchPatch);
+      updatedMatches += 1;
+    }
+
+    return { insertedMatches, skippedLockedMatches, updatedMatches };
   },
 });
 
@@ -451,7 +568,7 @@ export const listHomeMatches = query({
     const player = await requirePlayerBySessionToken(ctx, args.sessionToken);
     const now = Date.now();
     const allMatches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
-    const upcomingMatches = allMatches.filter((match) => match.kickoffAt > now);
+    const upcomingMatches = filterMatchesByPhase(allMatches, "knockout").filter((match) => match.kickoffAt > now);
     const historicalMatches = allMatches.filter((match) => match.kickoffAt <= now).reverse();
     const predictionDocs = await ctx.db
       .query("predictions")

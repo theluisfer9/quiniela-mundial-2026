@@ -54,5 +54,7 @@ export function getSpanishTeamName(code: string, fallbackName: string) {
 }
 
 export function getSpanishStageLabel(stageLabel: string) {
-  return stageLabel.replace(/^Group\s+([A-Z])$/, "Grupo $1");
+  return stageLabel
+    .replace(/^Group\s+([A-Z])$/, "Grupo $1")
+    .replace(/^Round of 32$/, "16avos");
 }

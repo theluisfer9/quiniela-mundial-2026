@@ -126,5 +126,7 @@ export function localizeStageLabel(stageLabel: string, locale: AppLocale) {
     return stageLabel;
   }
 
-  return stageLabel.replace(/^Grupo\s+([A-Z])$/, "Group $1");
+  return stageLabel
+    .replace(/^Grupo\s+([A-Z])$/, "Group $1")
+    .replace(/^16avos$/, "Round of 32");
 }

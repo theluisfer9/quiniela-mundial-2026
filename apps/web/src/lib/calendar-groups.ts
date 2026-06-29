@@ -84,7 +84,7 @@ export function buildCalendarDaySections(matches: CalendarMatch[]): CalendarDayS
 }
 
 function getGroupCode(match: CalendarMatch) {
-  return match.groupCode ?? match.homeTeam.groupCode ?? match.awayTeam.groupCode ?? "?";
+  return match.groupCode ?? match.homeTeam.groupCode ?? match.awayTeam.groupCode;
 }
 
 function ensureTeam(rowsByCode: Map<string, GroupStandingRow>, team: CalendarTeamSummary) {
@@ -116,7 +116,14 @@ export function buildGroupStandings(matches: CalendarMatch[]): GroupStanding[] {
   const groups = new Map<string, Map<string, GroupStandingRow>>();
 
   for (const match of matches) {
+    if ((match.matchNumber ?? 0) >= 73) {
+      continue;
+    }
+
     const groupCode = getGroupCode(match);
+    if (!groupCode) {
+      continue;
+    }
     const rowsByCode = groups.get(groupCode) ?? new Map<string, GroupStandingRow>();
     const homeRow = ensureTeam(rowsByCode, match.homeTeam);
     const awayRow = ensureTeam(rowsByCode, match.awayTeam);

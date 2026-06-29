@@ -62,8 +62,9 @@ async function seedMatch(
   t: TestInstance,
   {
     kickoffAt = NOW + 60_000,
+    matchNumber,
     stageLabel = "Group A",
-  }: { kickoffAt?: number; stageLabel?: string } = {},
+  }: { kickoffAt?: number; matchNumber?: number; stageLabel?: string } = {},
 ) {
   const { argentinaId, brazilId } = await seedTeams(t);
 
@@ -72,6 +73,7 @@ async function seedMatch(
       kickoffAt,
       homeTeamId: argentinaId,
       awayTeamId: brazilId,
+      matchNumber,
       stageLabel,
       status: "scheduled",
     }),
@@ -115,7 +117,7 @@ describe("matches.listHomeMatches", () => {
     const t = createTest();
     const player = await seedPlayer(t);
     const sessionToken = await loginWithPin(t, player.pin);
-    const matchId = await seedMatch(t, { kickoffAt: NOW + 60_000, stageLabel: "Opening Match" });
+    const matchId = await seedMatch(t, { kickoffAt: NOW + 60_000, matchNumber: 73, stageLabel: "Round of 32" });
     const pastMatchId = await seedMatch(t, { kickoffAt: NOW - 60_000, stageLabel: "Past Match" });
 
     const result = await t.query(api.matches.listHomeMatches, { sessionToken });
@@ -124,7 +126,7 @@ describe("matches.listHomeMatches", () => {
     expect(result.upcomingMatches[0]).toMatchObject({
       matchId,
       kickoffAt: NOW + 60_000,
-      stageLabel: "Opening Match",
+      stageLabel: "16avos",
       homeTeam: {
         code: "ARG",
         name: "Argentina",
@@ -158,14 +160,29 @@ describe("matches.listHomeMatches", () => {
     expect(result.nextKickoff).toEqual({ kickoffAt: NOW + 60_000, matchCount: 1 });
   });
 
+  it("uses knockout as the active upcoming phase without hiding group history", async () => {
+    const t = createTest();
+    const player = await seedPlayer(t);
+    const sessionToken = await loginWithPin(t, player.pin);
+    await seedMatch(t, { kickoffAt: NOW + 60_000, matchNumber: 10, stageLabel: "Group A" });
+    const knockoutMatchId = await seedMatch(t, { kickoffAt: NOW + 120_000, matchNumber: 73, stageLabel: "Round of 32" });
+    const groupHistoryId = await seedMatch(t, { kickoffAt: NOW - 60_000, matchNumber: 1, stageLabel: "Group A" });
+
+    const result = await t.query(api.matches.listHomeMatches, { sessionToken });
+
+    expect(result.upcomingMatches.map((match: { matchId: string }) => match.matchId)).toEqual([knockoutMatchId]);
+    expect(result.historicalMatches.map((match: { matchId: string }) => match.matchId)).toEqual([groupHistoryId]);
+    expect(result.pendingCount).toBe(1);
+  });
+
   it("scopes hasPrediction and pendingCount to the session player", async () => {
     const t = createTest();
     const ana = await seedPlayer(t, { displayName: "Ana", pin: "A1B2" });
     const beto = await seedPlayer(t, { displayName: "Beto", pin: "B2C3" });
     const anaSessionToken = await loginWithPin(t, ana.pin);
     const betoSessionToken = await loginWithPin(t, beto.pin);
-    const firstMatchId = await seedMatch(t, { kickoffAt: NOW + 60_000, stageLabel: "First" });
-    const secondMatchId = await seedMatch(t, { kickoffAt: NOW + 120_000, stageLabel: "Second" });
+    const firstMatchId = await seedMatch(t, { kickoffAt: NOW + 60_000, matchNumber: 73, stageLabel: "First" });
+    const secondMatchId = await seedMatch(t, { kickoffAt: NOW + 120_000, matchNumber: 74, stageLabel: "Second" });
 
     await t.mutation(api.predictions.upsertPrediction, {
       sessionToken: anaSessionToken,
@@ -341,5 +358,128 @@ describe("matches.markStartedMatchesLive", () => {
     expect(matches.alreadyLive?.homeScore).toBeUndefined();
     expect(matches.alreadyLive?.awayScore).toBeUndefined();
     expect(matches.finished?.status).toBe("finished");
+  });
+});
+
+
+describe("matches.upsertKnockoutMatches", () => {
+  const originalKnockoutFixtureUpdate = process.env.ENABLE_KNOCKOUT_FIXTURE_UPDATE;
+
+  afterEach(() => {
+    if (originalKnockoutFixtureUpdate === undefined) {
+      delete process.env.ENABLE_KNOCKOUT_FIXTURE_UPDATE;
+    } else {
+      process.env.ENABLE_KNOCKOUT_FIXTURE_UPDATE = originalKnockoutFixtureUpdate;
+    }
+  });
+
+  it("inserts knockout matches without deleting existing group matches or predictions", async () => {
+    const t = createTest();
+    process.env.ENABLE_KNOCKOUT_FIXTURE_UPDATE = "true";
+    const groupMatchId = await seedMatch(t, { kickoffAt: NOW - 60_000, stageLabel: "Group A" });
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("predictions", {
+        matchId: groupMatchId,
+        homeScore: 1n,
+        awayScore: 0n,
+        updatedAt: NOW,
+      });
+    });
+
+    await expect(t.mutation(api.matches.upsertKnockoutMatches, {
+      confirmUpdate: true,
+      fixtures: [{
+        awayTeamCode: "BRA",
+        homeTeamCode: "ARG",
+        kickoffAt: NOW + 86_400_000,
+        matchNumber: 73,
+        stageLabel: "Round of 32",
+        venue: "Los Angeles Stadium",
+      }],
+    })).resolves.toEqual({ insertedMatches: 1, skippedLockedMatches: 0, updatedMatches: 0 });
+
+    const data = await t.run(async (ctx) => ({
+      matches: await ctx.db.query("matches").collect(),
+      predictions: await ctx.db.query("predictions").collect(),
+    }));
+
+    expect(data.matches).toHaveLength(2);
+    expect(data.predictions).toHaveLength(1);
+    expect(data.matches.find((match) => match.matchNumber === 73)).toMatchObject({
+      kickoffAt: NOW + 86_400_000,
+      stageLabel: "Round of 32",
+      status: "scheduled",
+      venue: "Los Angeles Stadium",
+    });
+    expect(data.matches.find((match) => match._id === groupMatchId)).toBeDefined();
+  });
+
+  it("updates existing scheduled knockout matches but skips locked live/finished matches", async () => {
+    const t = createTest();
+    process.env.ENABLE_KNOCKOUT_FIXTURE_UPDATE = "true";
+    const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("matches", {
+        awayTeamId: brazilId,
+        homeTeamId: argentinaId,
+        kickoffAt: NOW + 60_000,
+        matchNumber: 73,
+        stageLabel: "Round of 32",
+        status: "scheduled",
+      });
+      await ctx.db.insert("matches", {
+        awayScore: 1n,
+        awayTeamId: brazilId,
+        homeScore: 1n,
+        homeTeamId: argentinaId,
+        kickoffAt: NOW + 120_000,
+        matchNumber: 74,
+        stageLabel: "Round of 32",
+        status: "finished",
+      });
+    });
+
+    await expect(t.mutation(api.matches.upsertKnockoutMatches, {
+      confirmUpdate: true,
+      fixtures: [
+        {
+          awayTeamCode: "MEX",
+          homeTeamCode: "BRA",
+          kickoffAt: NOW + 86_400_000,
+          matchNumber: 73,
+          stageLabel: "Round of 32",
+        },
+        {
+          awayTeamCode: "MEX",
+          homeTeamCode: "BRA",
+          kickoffAt: NOW + 86_400_000,
+          matchNumber: 74,
+          stageLabel: "Round of 32",
+        },
+      ],
+    })).resolves.toEqual({ insertedMatches: 0, skippedLockedMatches: 1, updatedMatches: 1 });
+
+    const matches = await t.run(async (ctx) => await ctx.db.query("matches").collect());
+    const updatedMatch = matches.find((match) => match.matchNumber === 73);
+    const lockedMatch = matches.find((match) => match.matchNumber === 74);
+    expect(updatedMatch).toMatchObject({ awayTeamId: mexicoId, homeTeamId: brazilId, kickoffAt: NOW + 86_400_000 });
+    expect(lockedMatch).toMatchObject({ status: "finished", homeTeamId: argentinaId, awayTeamId: brazilId });
+  });
+
+  it("rejects when the operation is not explicitly enabled", async () => {
+    const t = createTest();
+    await seedTeams(t);
+
+    await expect(t.mutation(api.matches.upsertKnockoutMatches, {
+      confirmUpdate: true,
+      fixtures: [{
+        awayTeamCode: "BRA",
+        homeTeamCode: "ARG",
+        kickoffAt: NOW + 86_400_000,
+        matchNumber: 73,
+        stageLabel: "Round of 32",
+      }],
+    })).rejects.toThrow("Knockout fixture update is not enabled");
   });
 });

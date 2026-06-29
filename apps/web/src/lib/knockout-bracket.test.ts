@@ -144,4 +144,38 @@ describe("knockout bracket", () => {
 
     expect(resolved.filter((match) => match.awaySlot.kind === "third-place").map((match) => match.away.team?.groupCode)).toEqual(["F", "G", "E", "K", "I", "H", "J", "L"]);
   });
+
+  it("uses a fixed M73 match instead of the calculated round-of-32 slot", () => {
+    const groups = [
+      group("A", [row({ teamCode: "A1", groupCode: "A" }), row({ teamCode: "A2", groupCode: "A" })]),
+      group("B", [row({ teamCode: "B1", groupCode: "B" }), row({ teamCode: "B2", groupCode: "B" })]),
+    ];
+    const [match] = resolveKnockoutRound(
+      KNOCKOUT_MATCHES.filter((match) => match.id === "M73"),
+      groups,
+      [
+        {
+          id: "M73",
+          home: { label: "FIXH", team: row({ teamCode: "FIXH", groupCode: "Z" }) },
+          away: { label: "FIXA", team: row({ teamCode: "FIXA", groupCode: "Z" }) },
+        },
+      ],
+    );
+
+    expect(match.source).toBe("fixed");
+    expect(match.home.team?.teamCode).toBe("FIXH");
+    expect(match.away.team?.teamCode).toBe("FIXA");
+  });
+
+  it("keeps calculating a round-of-32 match without a fixed replacement", () => {
+    const groups = [
+      group("A", [row({ teamCode: "A1", groupCode: "A" }), row({ teamCode: "A2", groupCode: "A" })]),
+      group("B", [row({ teamCode: "B1", groupCode: "B" }), row({ teamCode: "B2", groupCode: "B" })]),
+    ];
+    const [match] = resolveKnockoutRound(KNOCKOUT_MATCHES.filter((match) => match.id === "M73"), groups);
+
+    expect(match.source).toBe("calculated");
+    expect(match.home.team?.teamCode).toBe("A2");
+    expect(match.away.team?.teamCode).toBe("B2");
+  });
 });

@@ -78,7 +78,7 @@ async function seedTeams(t: TestInstance) {
   });
 }
 
-async function seedMatch(t: TestInstance, kickoffAt = NOW + 60_000) {
+async function seedMatch(t: TestInstance, kickoffAt = NOW + 60_000, matchNumber?: number) {
   const { argentinaId, brazilId } = await seedTeams(t);
 
   return await t.run((ctx) =>
@@ -86,6 +86,7 @@ async function seedMatch(t: TestInstance, kickoffAt = NOW + 60_000) {
       kickoffAt,
       homeTeamId: argentinaId,
       awayTeamId: brazilId,
+      matchNumber,
       stageLabel: "Group A",
       status: "scheduled",
     }),
@@ -204,6 +205,29 @@ describe("predictions", () => {
     expect(predictions).toHaveLength(2);
     expect(predictions.map((prediction) => prediction.playerId).sort()).toEqual([ana.playerId, beto.playerId].sort());
     expect(predictions.every((prediction) => prediction.userId === undefined)).toBe(true);
+  });
+
+  it("includes future knockout predictions and allows 90-minute draws", async () => {
+    const t = createTest();
+    const player = await seedPlayer(t);
+    const sessionToken = await loginWithPin(t, player.pin);
+    const matchId = await seedMatch(t, NOW + 60_000, 73);
+
+    await t.mutation(api.predictions.upsertPrediction, {
+      sessionToken,
+      matchId,
+      homeScore: 1n,
+      awayScore: 1n,
+    });
+
+    await expect(t.query(api.predictions.listMyPredictions, { sessionToken })).resolves.toEqual([
+      {
+        matchId,
+        homeScore: 1n,
+        awayScore: 1n,
+        updatedAt: NOW,
+      },
+    ]);
   });
 
   it("rejects locked matches", async () => {

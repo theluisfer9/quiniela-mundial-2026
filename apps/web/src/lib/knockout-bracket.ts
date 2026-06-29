@@ -37,6 +37,13 @@ export type KnockoutMatch = {
 export type ResolvedKnockoutMatch = KnockoutMatch & {
   home: ResolvedKnockoutSlot;
   away: ResolvedKnockoutSlot;
+  source?: "calculated" | "fixed";
+};
+
+export type FixedKnockoutMatch = {
+  id: string;
+  home: ResolvedKnockoutSlot;
+  away: ResolvedKnockoutSlot;
 };
 
 export const KNOCKOUT_ROUND_LABELS: Record<KnockoutRound, string> = {
@@ -121,10 +128,24 @@ export function resolveKnockoutMatch(match: KnockoutMatch, groups: GroupStanding
   };
 }
 
-export function resolveKnockoutRound(matches: KnockoutMatch[], groups: GroupStanding[]) {
+export function resolveKnockoutRound(matches: KnockoutMatch[], groups: GroupStanding[], fixedMatches: FixedKnockoutMatch[] = []) {
   const usedThirdPlaceGroups = new Set<string>();
   const officialThirdPlaceAssignments = getOfficialThirdPlaceAssignments(getQualifyingThirdPlaceRows(groups).map((row) => row.groupCode));
-  return matches.map((match) => resolveKnockoutMatchWithOfficialThirdPlaces(match, groups, usedThirdPlaceGroups, officialThirdPlaceAssignments));
+  const fixedMatchById = new Map(fixedMatches.map((match) => [match.id, match]));
+
+  return matches.map((match) => {
+    const fixedMatch = fixedMatchById.get(match.id);
+    if (fixedMatch) {
+      return {
+        ...match,
+        home: fixedMatch.home,
+        away: fixedMatch.away,
+        source: "fixed" as const,
+      };
+    }
+
+    return resolveKnockoutMatchWithOfficialThirdPlaces(match, groups, usedThirdPlaceGroups, officialThirdPlaceAssignments);
+  });
 }
 
 function resolveKnockoutMatchWithOfficialThirdPlaces(
@@ -137,6 +158,7 @@ function resolveKnockoutMatchWithOfficialThirdPlaces(
     ...match,
     home: resolveKnockoutSlotWithOfficialThirdPlaces(match.homeSlot, groups, usedThirdPlaceGroups, match, officialThirdPlaceAssignments),
     away: resolveKnockoutSlotWithOfficialThirdPlaces(match.awaySlot, groups, usedThirdPlaceGroups, match, officialThirdPlaceAssignments),
+    source: "calculated",
   };
 }
 

@@ -233,7 +233,7 @@ function ScoreManagerRoute() {
         </Button>
       }
     >
-      <div className="grid grid-cols-2 gap-2 rounded-[1.15rem] bg-muted p-1">
+      <div className="grid min-w-0 grid-cols-2 gap-2 rounded-[1.15rem] bg-muted p-1">
         <TabButton active={activeTab === "scores"} onClick={() => setActiveTab("scores")}>Marcadores en vivo</TabButton>
         <TabButton active={activeTab === "votes"} onClick={() => setActiveTab("votes")}>Votos por partido</TabButton>
       </div>
@@ -254,11 +254,11 @@ function ScoreManagerRoute() {
             const isSaving = savingMatchId === key;
 
             return (
-              <article key={key} className="rounded-[1.35rem] border border-[#2A398D]/14 bg-card/95 p-3 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.45)] sm:rounded-[1.5rem] sm:p-5">
+              <article key={key} className="min-w-0 overflow-hidden rounded-[1.35rem] border border-[#2A398D]/14 bg-card/95 p-3 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.45)] sm:rounded-[1.5rem] sm:p-5">
                 <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-[0.68rem] font-black tracking-[0.2em] text-[#2A398D]/72 uppercase">{match.stageLabel}</p>
-                    <h2 className="mt-1 text-balance font-display text-xl font-extrabold leading-tight tracking-[-0.04em] text-foreground sm:text-2xl">
+                    <h2 className="mt-1 break-words font-display text-xl font-extrabold leading-tight tracking-[-0.04em] text-foreground sm:text-2xl">
                       {match.homeTeam.name} vs {match.awayTeam.name}
                     </h2>
                   </div>
@@ -297,7 +297,7 @@ function TabButton({ active, children, onClick }: { active: boolean; children: R
   return (
     <button
       className={cn(
-        "min-h-11 rounded-[0.9rem] px-3 py-2 text-sm font-black tracking-[-0.01em] transition",
+        "min-h-11 min-w-0 rounded-[0.9rem] px-2 py-2 text-center text-xs font-black leading-tight tracking-[-0.01em] transition sm:px-3 sm:text-sm",
         active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
       )}
       type="button"
@@ -330,13 +330,13 @@ function VoteAuditPanel({ matches }: { matches: OperatorMatchVotes[] }) {
   const selectedMatch = matches[selectedIndex] ?? matches[0];
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
-      <div className="rounded-[1.25rem] border border-border/70 bg-card/95 p-3 lg:sticky lg:top-24">
+    <div className="grid min-w-0 gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
+      <div className="min-w-0 rounded-[1.25rem] border border-border/70 bg-card/95 p-3 lg:sticky lg:top-24">
         <div className="grid gap-2 lg:hidden">
           <label className="grid gap-2">
             <span className="text-xs font-black tracking-[0.16em] text-muted-foreground uppercase">Partido</span>
             <select
-              className="min-h-12 rounded-[1rem] border border-border/80 bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-[#2A398D] focus:ring-2 focus:ring-[#2A398D]/20"
+              className="min-h-12 w-full min-w-0 rounded-[1rem] border border-border/80 bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-[#2A398D] focus:ring-2 focus:ring-[#2A398D]/20"
               value={String(selectedMatch.matchId)}
               onChange={(event) => setSelectedMatchId(event.target.value)}
             >
@@ -347,10 +347,10 @@ function VoteAuditPanel({ matches }: { matches: OperatorMatchVotes[] }) {
               ))}
             </select>
           </label>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <Button className="h-11 rounded-[1rem]" disabled={selectedIndex <= 0} type="button" variant="outline" onClick={() => setSelectedMatchId(String(matches[selectedIndex - 1].matchId))}>Anterior</Button>
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+            <Button className="h-11 min-w-0 rounded-[1rem] px-2 text-xs sm:text-sm" disabled={selectedIndex <= 0} type="button" variant="outline" onClick={() => setSelectedMatchId(String(matches[selectedIndex - 1].matchId))}>Anterior</Button>
             <p className="px-2 text-center text-xs font-black text-muted-foreground">{selectedIndex + 1}/{matches.length}</p>
-            <Button className="h-11 rounded-[1rem]" disabled={selectedIndex >= matches.length - 1} type="button" variant="outline" onClick={() => setSelectedMatchId(String(matches[selectedIndex + 1].matchId))}>Siguiente</Button>
+            <Button className="h-11 min-w-0 rounded-[1rem] px-2 text-xs sm:text-sm" disabled={selectedIndex >= matches.length - 1} type="button" variant="outline" onClick={() => setSelectedMatchId(String(matches[selectedIndex + 1].matchId))}>Siguiente</Button>
           </div>
         </div>
 
@@ -363,7 +363,7 @@ function VoteAuditPanel({ matches }: { matches: OperatorMatchVotes[] }) {
               <button
                 key={String(match.matchId)}
                 className={cn(
-                  "rounded-[1rem] border px-3 py-3 text-left transition",
+                  "min-w-0 rounded-[1rem] border px-3 py-3 text-left transition",
                   isSelected ? "border-[#2A398D]/35 bg-[#2A398D]/10" : "border-border/70 bg-background/70 hover:border-[#2A398D]/25 hover:bg-background",
                 )}
                 type="button"
@@ -389,11 +389,11 @@ function VoteAuditCard({ match }: { match: OperatorMatchVotes }) {
   const pendingCount = match.totalPlayers - match.votedCount;
 
   return (
-    <article className="rounded-[1.35rem] border border-border/70 bg-card/95 p-3 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)] sm:rounded-[1.5rem] sm:p-5">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+    <article className="min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-card/95 p-3 shadow-[0_18px_44px_-34px_rgba(42,57,141,0.35)] sm:rounded-[1.5rem] sm:p-5">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0">
           <p className="text-[0.68rem] font-black tracking-[0.2em] text-[#2A398D]/72 uppercase">{match.stageLabel}</p>
-          <h2 className="mt-1 text-balance font-display text-xl font-extrabold leading-tight tracking-[-0.04em] text-foreground sm:text-2xl">
+          <h2 className="mt-1 break-words font-display text-xl font-extrabold leading-tight tracking-[-0.04em] text-foreground sm:text-2xl">
             {match.homeTeamName} vs {match.awayTeamName}
           </h2>
           <p className="mt-1 text-sm font-medium text-muted-foreground">{formatOperatorKickoff(match.kickoffAt)}</p>
@@ -405,19 +405,19 @@ function VoteAuditCard({ match }: { match: OperatorMatchVotes }) {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-4 grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {match.votes.map((vote) => (
-          <div key={vote.playerName} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] border border-border/70 bg-background/80 px-3 py-3">
+          <div key={vote.playerName} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] border border-border/70 bg-background/80 px-3 py-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-foreground">{vote.playerName}</p>
               <p className={cn("text-xs font-semibold", vote.hasPrediction ? "text-[#08783a]" : "text-muted-foreground")}>{vote.hasPrediction ? "Voto cargado" : "Pendiente"}</p>
             </div>
             {vote.hasPrediction ? (
-              <span className="rounded-[0.8rem] bg-[#2A398D]/10 px-3 py-1.5 font-display text-xl font-extrabold tracking-[-0.04em] text-[#2A398D]">
+              <span className="shrink-0 rounded-[0.8rem] bg-[#2A398D]/10 px-2.5 py-1.5 font-display text-lg font-extrabold tracking-[-0.04em] text-[#2A398D] sm:px-3 sm:text-xl">
                 {String(vote.homeScore)}-{String(vote.awayScore)}
               </span>
             ) : (
-              <span className="rounded-[0.8rem] bg-muted px-3 py-1.5 text-xs font-black tracking-[0.12em] text-muted-foreground uppercase">Sin voto</span>
+              <span className="shrink-0 rounded-[0.8rem] bg-muted px-2.5 py-1.5 text-[0.68rem] font-black tracking-[0.08em] text-muted-foreground uppercase sm:px-3 sm:text-xs sm:tracking-[0.12em]">Sin voto</span>
             )}
           </div>
         ))}

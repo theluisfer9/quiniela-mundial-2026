@@ -121,7 +121,7 @@ describe("Task 2 handlers", () => {
         });
       });
 
-      const standings = await asAna.query(api.standings.getHomeStandings, {});
+      const standings = await asAna.query(api.standings.getHomeStandings, { phase: "overall" });
 
       expect(standings).toEqual([
         {
@@ -140,6 +140,72 @@ describe("Task 2 handlers", () => {
         },
       ]);
       expect(standings[0]).not.toHaveProperty("predictions");
+    });
+
+    it("defaults authenticated home standings to knockout only", async () => {
+      const t = createTest();
+      const asAna = t.withIdentity({ name: "Ana", email: "ana@example.com", tokenIdentifier: "test|ana" });
+      const { argentinaId, brazilId, mexicoId } = await seedTeams(t);
+      await t.run(async (ctx) => {
+        await ctx.db.insert("profiles", { userId: "test|ana", displayName: "Ana" });
+        await ctx.db.insert("profiles", { userId: "test|beto", displayName: "Beto" });
+      });
+
+      const groupMatchId = await t.run((ctx) =>
+        ctx.db.insert("matches", {
+          kickoffAt: NOW - 120_000,
+          homeTeamId: argentinaId,
+          awayTeamId: brazilId,
+          matchNumber: 1,
+          stageLabel: "Group A",
+          status: "finished",
+          homeScore: 2n,
+          awayScore: 1n,
+        }),
+      );
+      const knockoutMatchId = await t.run((ctx) =>
+        ctx.db.insert("matches", {
+          kickoffAt: NOW - 60_000,
+          homeTeamId: mexicoId,
+          awayTeamId: brazilId,
+          matchNumber: 73,
+          stageLabel: "Round of 32",
+          status: "finished",
+          homeScore: 1n,
+          awayScore: 1n,
+        }),
+      );
+
+      await t.run(async (ctx) => {
+        await ctx.db.insert("predictions", {
+          userId: "test|ana",
+          matchId: groupMatchId,
+          homeScore: 2n,
+          awayScore: 1n,
+          updatedAt: NOW - 180_000,
+        });
+        await ctx.db.insert("predictions", {
+          userId: "test|ana",
+          matchId: knockoutMatchId,
+          homeScore: 1n,
+          awayScore: 0n,
+          updatedAt: NOW - 90_000,
+        });
+        await ctx.db.insert("predictions", {
+          userId: "test|beto",
+          matchId: knockoutMatchId,
+          homeScore: 1n,
+          awayScore: 1n,
+          updatedAt: NOW - 90_000,
+        });
+      });
+
+      const standings = await asAna.query(api.standings.getHomeStandings, {});
+
+      expect(standings).toEqual([
+        { rank: 1, name: "Beto", points: 3, rankDelta: 1, isCurrentUser: false },
+        { rank: 2, name: "Ana", points: 1, rankDelta: -1, isCurrentUser: true },
+      ]);
     });
   });
 });

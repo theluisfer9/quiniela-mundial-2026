@@ -118,4 +118,44 @@ describe("buildGroupStandings", () => {
 
     expect(standings[0]?.rows.map((row) => row.teamCode)).toEqual(["ENG", "CRO", "PAN", "GHA"]);
   });
+
+  it("ignores knockout matches without group metadata", () => {
+    const standings = buildGroupStandings([
+      match({ matchId: "group", homeTeam: TEAM_MEX, awayTeam: TEAM_RSA, status: "finished", homeScore: 2, awayScore: 0 }),
+      match({
+        matchId: "m73",
+        matchNumber: 73,
+        stageLabel: "16avos",
+        groupCode: null,
+        homeTeam: { id: "arg", code: "ARG", name: "Argentina" },
+        awayTeam: { id: "bra", code: "BRA", name: "Brazil" },
+        status: "finished",
+        homeScore: 1,
+        awayScore: 1,
+      }),
+    ]);
+
+    expect(standings.map((group) => group.groupCode)).toEqual(["A"]);
+    expect(standings[0]?.rows.map((row) => row.teamCode)).toEqual(["MEX", "RSA"]);
+  });
+
+  it("ignores knockout matches even when teams still have original group metadata", () => {
+    const standings = buildGroupStandings([
+      match({ matchId: "group", homeTeam: TEAM_MEX, awayTeam: TEAM_RSA, status: "finished", homeScore: 2, awayScore: 0 }),
+      match({
+        matchId: "m73",
+        matchNumber: 73,
+        stageLabel: "16avos",
+        groupCode: "A",
+        homeTeam: TEAM_MEX,
+        awayTeam: TEAM_RSA,
+        status: "finished",
+        homeScore: 1,
+        awayScore: 1,
+      }),
+    ]);
+
+    expect(standings[0]?.rows.find((row) => row.teamCode === "MEX")?.played).toBe(1);
+    expect(standings[0]?.rows.find((row) => row.teamCode === "RSA")?.played).toBe(1);
+  });
 });

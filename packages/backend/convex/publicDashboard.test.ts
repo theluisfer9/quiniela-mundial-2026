@@ -64,11 +64,12 @@ async function seedPublicDashboardData(t: TestInstance) {
       expiresAt: NOW + 86_400_000,
     });
 
-    const yesterdayFinishedId = await ctx.db.insert("matches", {
+    const groupFinishedId = await ctx.db.insert("matches", {
       kickoffAt: new Date("2026-06-11T23:00:00.000Z").getTime(),
       homeTeamId: teams.argentinaId,
       awayTeamId: teams.brazilId,
       stageLabel: "Group A",
+      matchNumber: 1,
       status: "finished",
       homeScore: 2n,
       awayScore: 1n,
@@ -78,6 +79,7 @@ async function seedPublicDashboardData(t: TestInstance) {
       homeTeamId: teams.mexicoId,
       awayTeamId: teams.canadaId,
       stageLabel: "Group B",
+      matchNumber: 2,
       status: "scheduled",
       homeScore: 4n,
       awayScore: 4n,
@@ -87,6 +89,7 @@ async function seedPublicDashboardData(t: TestInstance) {
       homeTeamId: teams.argentinaId,
       awayTeamId: teams.mexicoId,
       stageLabel: "Group C",
+      matchNumber: 3,
       status: "live",
       homeScore: 1n,
       awayScore: 0n,
@@ -96,35 +99,55 @@ async function seedPublicDashboardData(t: TestInstance) {
       homeTeamId: teams.brazilId,
       awayTeamId: teams.canadaId,
       stageLabel: "Group D",
+      matchNumber: 4,
       status: "scheduled",
     });
-    const secondFinishedId = await ctx.db.insert("matches", {
+    const knockoutFinishedId = await ctx.db.insert("matches", {
       kickoffAt: new Date("2026-06-12T01:00:00.000Z").getTime(),
       homeTeamId: teams.mexicoId,
       awayTeamId: teams.canadaId,
-      stageLabel: "Group E",
+      stageLabel: "Round of 32",
+      matchNumber: 73,
       status: "finished",
       homeScore: 1n,
       awayScore: 1n,
     });
+    const knockoutScheduledId = await ctx.db.insert("matches", {
+      kickoffAt: new Date("2026-06-12T18:00:00.000Z").getTime(),
+      homeTeamId: teams.argentinaId,
+      awayTeamId: teams.canadaId,
+      stageLabel: "Round of 32",
+      matchNumber: 74,
+      status: "scheduled",
+    });
+    const knockoutLiveId = await ctx.db.insert("matches", {
+      kickoffAt: new Date("2026-06-12T19:00:00.000Z").getTime(),
+      homeTeamId: teams.argentinaId,
+      awayTeamId: teams.brazilId,
+      stageLabel: "Round of 32",
+      matchNumber: 75,
+      status: "live",
+      homeScore: 2n,
+      awayScore: 0n,
+    });
 
     await ctx.db.insert("predictions", {
       playerId: anaId,
-      matchId: yesterdayFinishedId,
+      matchId: groupFinishedId,
       homeScore: 2n,
       awayScore: 1n,
       updatedAt: NOW - 120_000,
     });
     await ctx.db.insert("predictions", {
       playerId: betoId,
-      matchId: yesterdayFinishedId,
+      matchId: groupFinishedId,
       homeScore: 2n,
       awayScore: 1n,
       updatedAt: NOW - 120_000,
     });
     await ctx.db.insert("predictions", {
       userId: "legacy|ana",
-      matchId: yesterdayFinishedId,
+      matchId: groupFinishedId,
       homeScore: 2n,
       awayScore: 1n,
       updatedAt: NOW - 120_000,
@@ -145,26 +168,40 @@ async function seedPublicDashboardData(t: TestInstance) {
     });
     await ctx.db.insert("predictions", {
       playerId: anaId,
-      matchId: secondFinishedId,
+      matchId: knockoutFinishedId,
       homeScore: 1n,
       awayScore: 0n,
       updatedAt: NOW - 30_000,
     });
     await ctx.db.insert("predictions", {
       playerId: betoId,
-      matchId: secondFinishedId,
+      matchId: knockoutFinishedId,
       homeScore: 1n,
       awayScore: 1n,
       updatedAt: NOW - 30_000,
     });
     await ctx.db.insert("predictions", {
-      matchId: secondFinishedId,
+      matchId: knockoutFinishedId,
       homeScore: 0n,
       awayScore: 0n,
       updatedAt: NOW - 30_000,
     });
+    await ctx.db.insert("predictions", {
+      playerId: anaId,
+      matchId: knockoutLiveId,
+      homeScore: 1n,
+      awayScore: 0n,
+      updatedAt: NOW - 20_000,
+    });
+    await ctx.db.insert("predictions", {
+      playerId: betoId,
+      matchId: knockoutLiveId,
+      homeScore: 2n,
+      awayScore: 0n,
+      updatedAt: NOW - 20_000,
+    });
 
-    return { yesterdayFinishedId, todayScheduledId, todayLiveId, tomorrowScheduledId, secondFinishedId };
+    return { groupFinishedId, todayScheduledId, todayLiveId, tomorrowScheduledId, knockoutFinishedId, knockoutScheduledId, knockoutLiveId };
   });
 }
 
@@ -185,26 +222,19 @@ describe("public dashboard", () => {
 
     const dashboard = await t.query(api.matches.getPublicDashboardMatches, {});
 
-    expect(dashboard.liveMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
-      ids.todayLiveId,
-    ]);
+    expect(dashboard.liveMatches.map((match: { matchId: string }) => match.matchId)).toEqual([ids.knockoutLiveId]);
     expect(dashboard.todayMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
-      ids.todayScheduledId,
-      ids.todayLiveId,
-      ids.tomorrowScheduledId,
-    ]);
-    expect(dashboard.liveMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
-      ids.todayLiveId,
+      ids.knockoutScheduledId,
+      ids.knockoutLiveId,
     ]);
     expect(dashboard.upcomingMatches.map((match: { matchId: string }) => match.matchId)).toEqual([]);
     expect(dashboard.finishedMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
-      ids.yesterdayFinishedId,
-      ids.secondFinishedId,
+      ids.knockoutFinishedId,
     ]);
-    expect(dashboard.finishedMatches[0]).toMatchObject({ homeScore: 2, awayScore: 1 });
+    expect(dashboard.finishedMatches[0]).toMatchObject({ homeScore: 1, awayScore: 1 });
     expect(dashboard.todayMatches[0]).not.toHaveProperty("homeScore");
     expect(dashboard.todayMatches[0]).not.toHaveProperty("awayScore");
-    expect(dashboard.todayMatches[1]).toMatchObject({ homeScore: 1, awayScore: 0 });
+    expect(dashboard.todayMatches[1]).toMatchObject({ homeScore: 2, awayScore: 0 });
 
     const json = JSON.stringify(dashboard);
     expect(json).not.toContain("pinHash");
@@ -212,6 +242,8 @@ describe("public dashboard", () => {
     expect(json).not.toContain("sessionToken");
     expect(json).not.toContain("userId");
     expect(json).not.toContain("predictions");
+    expect(json).not.toContain(String(ids.groupFinishedId));
+    expect(json).not.toContain(String(ids.todayLiveId));
     expect(json).not.toContain('"homeScore":4');
     expect(json).not.toContain('"awayScore":4');
   });
@@ -224,10 +256,19 @@ describe("public dashboard", () => {
 
     expect(dashboard.stats).toEqual({
       leaderName: null,
-      finishedMatchCount: 3,
+      finishedMatchCount: 1,
       totalPredictionCountForFinishedMatches: 0,
       bestExactScoreCount: 0,
     });
+  });
+
+  it("can explicitly read the historical overall dashboard when needed", async () => {
+    const t = createTest();
+    await seedPublicDashboardData(t);
+
+    const dashboard = await t.query(api.matches.getPublicDashboardMatches, { phase: "overall" });
+
+    expect(dashboard.stats.finishedMatchCount).toBe(2);
   });
 
   it("returns public calendar rows with group metadata and safe scheduled scores", async () => {
@@ -239,6 +280,7 @@ describe("public dashboard", () => {
     expect(calendar.matches.map((match: { matchId: string }) => match.matchId)).toContain(ids.todayScheduledId);
     const scheduled = calendar.matches.find((match: { matchId: string }) => match.matchId === ids.todayScheduledId);
     const live = calendar.matches.find((match: { matchId: string }) => match.matchId === ids.todayLiveId);
+    const knockout = calendar.matches.find((match: { matchId: string }) => match.matchId === ids.knockoutScheduledId);
     expect(scheduled).toMatchObject({
       groupCode: "B",
       homeTeam: { groupCode: "B", name: "México", worldRanking: 13 },
@@ -248,6 +290,7 @@ describe("public dashboard", () => {
     expect(scheduled).not.toHaveProperty("homeScore");
     expect(scheduled).not.toHaveProperty("awayScore");
     expect(live).toMatchObject({ homeScore: 1, awayScore: 0, status: "live" });
+    expect(knockout).toMatchObject({ groupCode: null, matchNumber: 74, stageLabel: "16avos" });
   });
 
   it("returns public standings with all rows marked as not current user", async () => {
@@ -257,8 +300,22 @@ describe("public dashboard", () => {
     const standings = await t.query(api.standings.getPublicStandings, {});
 
     expect(standings).toEqual([
-      { rank: 1, name: "Beto", points: 9, rankDelta: 0, isCurrentUser: false },
-      { rank: 2, name: "Ana", points: 4, rankDelta: 0, isCurrentUser: false },
+      { rank: 1, name: "Beto", points: 6, rankDelta: 0, isCurrentUser: false },
+      { rank: 2, name: "Ana", points: 3, rankDelta: 0, isCurrentUser: false },
+    ]);
+  });
+
+  it("can return group-stage and overall standings without mixing them into knockout", async () => {
+    const t = createTest();
+    await seedPublicDashboardData(t);
+
+    await expect(t.query(api.standings.getPublicStandings, { phase: "group" })).resolves.toEqual([
+      { rank: 1, name: "Beto", points: 6, rankDelta: 1, isCurrentUser: false },
+      { rank: 2, name: "Ana", points: 3, rankDelta: -1, isCurrentUser: false },
+    ]);
+    await expect(t.query(api.standings.getPublicStandings, { phase: "overall" })).resolves.toEqual([
+      { rank: 1, name: "Beto", points: 12, rankDelta: 0, isCurrentUser: false },
+      { rank: 2, name: "Ana", points: 6, rankDelta: 0, isCurrentUser: false },
     ]);
   });
 
@@ -272,36 +329,36 @@ describe("public dashboard", () => {
       expect.objectContaining({
         rank: 1,
         name: "Beto",
-        points: 9,
-        exactScoreCount: 3,
-        outcomeHitCount: 3,
-        predictionCount: 3,
+        points: 6,
+        exactScoreCount: 2,
+        outcomeHitCount: 2,
+        predictionCount: 2,
         precision: 100,
         leaderGap: 0,
         rankDelta: 0,
-        currentStreak: 3,
-        longestStreak: 3,
+        currentStreak: 2,
+        longestStreak: 2,
         nearMissCount: 0,
         drawPredictionCount: 1,
         contrarianHitCount: 0,
-        mostCommonScore: "2-1",
+        mostCommonScore: "1-1",
       }),
       expect.objectContaining({
         rank: 2,
         name: "Ana",
-        points: 4,
-        exactScoreCount: 1,
+        points: 3,
+        exactScoreCount: 0,
         outcomeHitCount: 1,
         predictionCount: 2,
         precision: 50,
-        leaderGap: 5,
+        leaderGap: 3,
         rankDelta: 0,
-        currentStreak: -1,
+        currentStreak: 1,
         longestStreak: 1,
-        nearMissCount: 1,
+        nearMissCount: 2,
         drawPredictionCount: 0,
         contrarianHitCount: 0,
-        mostCommonScore: "2-1",
+        mostCommonScore: "1-0",
       }),
     ]);
     expect(analytics.awardCards.map((award: { label: string }) => award.label)).toEqual([
@@ -313,11 +370,11 @@ describe("public dashboard", () => {
       "Contra la corriente",
     ]);
     expect(analytics.consensusMatches.map((match: { matchId: string }) => match.matchId)).toEqual([
-      ids.yesterdayFinishedId,
-      ids.secondFinishedId,
-      ids.todayLiveId,
+      ids.knockoutFinishedId,
+      ids.knockoutLiveId,
     ]);
     expect(JSON.stringify(analytics)).not.toContain(String(ids.todayScheduledId));
+    expect(JSON.stringify(analytics)).not.toContain(String(ids.groupFinishedId));
     expect(JSON.stringify(analytics)).not.toContain("Legacy No Pin");
     expect(JSON.stringify(analytics)).not.toContain("Inactive Player");
     expect(JSON.stringify(analytics)).not.toContain("pinHash");

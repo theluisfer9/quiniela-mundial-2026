@@ -7,20 +7,26 @@ import { buildStandingsRows } from "./lib/scoring";
 import { normalizeSoccerScore } from "./lib/scores";
 import { getSpanishStageLabel, getSpanishTeamName } from "./lib/teamDisplay";
 
-type FinishedMatch = Doc<"matches"> & {
-  status: "finished";
-  homeScore: bigint;
-  awayScore: bigint;
-};
-
 type ScoredMatch = Doc<"matches"> & {
   status: "live" | "finished";
   homeScore: bigint;
   awayScore: bigint;
 };
 
-function isFinishedMatch(match: Doc<"matches">): match is FinishedMatch {
-  return match.status === "finished" && match.homeScore !== undefined && match.awayScore !== undefined;
+type MatchPhase = "group" | "knockout" | "overall";
+
+const phaseArg = v.optional(v.union(v.literal("group"), v.literal("knockout"), v.literal("overall")));
+
+function isKnockoutMatch(match: Doc<"matches">) {
+  return (match.matchNumber ?? 0) >= 73;
+}
+
+function filterMatchesByPhase<T extends Doc<"matches">>(matches: T[], phase: MatchPhase = "knockout") {
+  if (phase === "overall") {
+    return matches;
+  }
+
+  return matches.filter((match) => phase === "knockout" ? isKnockoutMatch(match) : !isKnockoutMatch(match));
 }
 
 function isScoredMatch(match: Doc<"matches">): match is ScoredMatch {
@@ -80,18 +86,21 @@ const dashboardAnalytics = v.object({
   consensusMatches: v.array(consensusMatch),
 });
 
-async function getFinishedStandingsInputs(ctx: QueryCtx, publicOnly: boolean) {
+async function getScoredStandingsInputs(ctx: QueryCtx, publicOnly: boolean, phase: MatchPhase = "knockout") {
   const profiles = (await ctx.db.query("profiles").collect()).filter((profile) =>
     publicOnly ? profile.pinHash !== undefined && profile.active === true : true,
   );
-  const finishedMatches = (await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect()).filter(isScoredMatch);
+  const scoredMatches = filterMatchesByPhase(
+    await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect(),
+    phase,
+  ).filter(isScoredMatch);
   const predictionGroups = await Promise.all(
-    finishedMatches.map((match) =>
+    scoredMatches.map((match) =>
       ctx.db.query("predictions").withIndex("by_match_id", (q) => q.eq("matchId", match._id)).collect(),
     ),
   );
 
-  const matches = finishedMatches.map((match) => {
+  const matches = scoredMatches.map((match) => {
     try {
       return {
         id: match._id,
@@ -231,10 +240,10 @@ function pickAward(
 }
 
 export const getPublicStandings = query({
-  args: {},
+  args: { phase: phaseArg },
   returns: v.array(standingsRow),
-  handler: async (ctx) => {
-    const { profiles, matches, predictions } = await getFinishedStandingsInputs(ctx, true);
+  handler: async (ctx, args) => {
+    const { profiles, matches, predictions } = await getScoredStandingsInputs(ctx, true, args.phase);
 
     return buildStandingsRows({
       currentPlayerId: null,
@@ -249,27 +258,30 @@ export const getPublicStandings = query({
 });
 
 export const getPublicDashboardAnalytics = query({
-  args: {},
+  args: { phase: phaseArg },
   returns: dashboardAnalytics,
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const activeProfiles = (await ctx.db.query("profiles").collect()).filter(
       (profile) => profile.pinHash !== undefined && profile.active === true,
     );
     const activePlayerIds = new Set(activeProfiles.map((profile) => profile._id));
-    const allMatches = await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect();
-    const finishedMatches = allMatches.filter(isScoredMatch);
-    const finishedPredictionGroups = await Promise.all(
-      finishedMatches.map((match) =>
+    const allMatches = filterMatchesByPhase(
+      await ctx.db.query("matches").withIndex("by_kickoff_at").order("asc").collect(),
+      args.phase,
+    );
+    const scoredMatches = allMatches.filter(isScoredMatch);
+    const scoredPredictionGroups = await Promise.all(
+      scoredMatches.map((match) =>
         ctx.db.query("predictions").withIndex("by_match_id", (q) => q.eq("matchId", match._id)).collect(),
       ),
     );
-    const matches = finishedMatches.map((match) => ({
+    const matches = scoredMatches.map((match) => ({
       id: match._id,
       homeScore: normalizeSoccerScore(match.homeScore),
       awayScore: normalizeSoccerScore(match.awayScore),
     }));
     const matchById = new Map(matches.map((match) => [match.id, match]));
-    const finishedPredictions = finishedPredictionGroups.flat().flatMap((prediction) => {
+    const scoredPredictions = scoredPredictionGroups.flat().flatMap((prediction) => {
       if (!prediction.playerId || !activePlayerIds.has(prediction.playerId)) {
         return [];
       }
@@ -281,17 +293,17 @@ export const getPublicDashboardAnalytics = query({
         awayScore: normalizeSoccerScore(prediction.awayScore),
       }];
     });
-    const finishedPredictionsByMatchId = new Map<Doc<"matches">["_id"], typeof finishedPredictions>();
-    for (const prediction of finishedPredictions) {
-      const matchPredictions = finishedPredictionsByMatchId.get(prediction.matchId) ?? [];
+    const scoredPredictionsByMatchId = new Map<Doc<"matches">["_id"], typeof scoredPredictions>();
+    for (const prediction of scoredPredictions) {
+      const matchPredictions = scoredPredictionsByMatchId.get(prediction.matchId) ?? [];
       matchPredictions.push(prediction);
-      finishedPredictionsByMatchId.set(prediction.matchId, matchPredictions);
+      scoredPredictionsByMatchId.set(prediction.matchId, matchPredictions);
     }
     const standings = buildStandingsRows({
       currentPlayerId: null,
       profiles: activeProfiles.map((profile) => ({ playerId: profile._id, name: profile.displayName })),
       matches,
-      predictions: finishedPredictions,
+      predictions: scoredPredictions,
     });
     const metricsByPlayerId = new Map(
       activeProfiles.map((profile) => [
@@ -310,7 +322,7 @@ export const getPublicDashboardAnalytics = query({
     );
 
     for (const match of matches) {
-      const matchPredictions = finishedPredictionsByMatchId.get(match.id) ?? [];
+      const matchPredictions = scoredPredictionsByMatchId.get(match.id) ?? [];
       const consensusCounts = { away: 0, draw: 0, home: 0 };
       for (const prediction of matchPredictions) {
         consensusCounts[getOutcome(prediction.homeScore, prediction.awayScore)] += 1;
@@ -389,7 +401,7 @@ export const getPublicDashboardAnalytics = query({
     const consensusMatches = await Promise.all(
       startedMatches.map(async (match) => {
         const predictions = match.status === "finished"
-          ? (finishedPredictionsByMatchId.get(match._id) ?? [])
+          ? (scoredPredictionsByMatchId.get(match._id) ?? [])
           : await ctx.db
               .query("predictions")
               .withIndex("by_match_id", (q) => q.eq("matchId", match._id))
@@ -444,9 +456,9 @@ export const getPublicDashboardAnalytics = query({
 });
 
 export const getHomeStandings = query({
-  args: {},
+  args: { phase: phaseArg },
   returns: v.array(standingsRow),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const authUser = await getCurrentUserOrNull(ctx);
     if (!authUser) {
       throw new ConvexError("Not authenticated");
@@ -456,7 +468,7 @@ export const getHomeStandings = query({
       throw new ConvexError("Not authenticated");
     }
 
-    const { profiles, matches, predictions } = await getFinishedStandingsInputs(ctx, false);
+    const { profiles, matches, predictions } = await getScoredStandingsInputs(ctx, false, args.phase);
 
     return buildStandingsRows({
       currentPlayerId: userId,
