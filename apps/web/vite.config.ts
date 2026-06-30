@@ -22,8 +22,6 @@ export default defineConfig({
       registerType: "autoUpdate",
       workbox: {
         cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
       },
       manifest: {
         name: "Quiniela Mundial 2026",
