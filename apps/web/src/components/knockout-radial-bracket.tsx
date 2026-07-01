@@ -5,6 +5,7 @@ import { useMemo, useRef, useState, type PointerEvent } from "react";
 import type { GroupStandingRow } from "@/lib/calendar-groups";
 import { KNOCKOUT_MATCHES, type KnockoutMatch, type KnockoutRound, type KnockoutSlot } from "@/lib/knockout-bracket";
 import { useI18n, type AppCopy } from "@/lib/i18n";
+import { getTeamPrimaryColor } from "@/lib/team-colors";
 
 type TeamLike = Pick<GroupStandingRow, "flagEmoji" | "teamCode" | "teamName">;
 
@@ -382,6 +383,10 @@ function flagUrl(team?: TeamLike) {
   return code ? `https://flagcdn.com/w80/${code}.png` : undefined;
 }
 
+function advancementStroke(team?: TeamLike) {
+  return getTeamPrimaryColor(team?.teamCode);
+}
+
 function FlagBadge({ dimmed, point, selected, team, winner }: { dimmed?: boolean; point: Point; selected?: boolean; team?: TeamLike; winner?: boolean }) {
   const radius = selected ? FLAG_RADIUS + 5 : FLAG_RADIUS;
   const url = flagUrl(team);
@@ -442,11 +447,12 @@ function advancedFlagPoint(source: LayoutMatch) {
 function SlotMarker({ angle, match, onSelect, selected, slot, t }: { angle: number; match: LayoutMatch; onSelect: () => void; selected?: boolean; slot: BracketSlot; t: AppCopy["calendar"] }) {
   const point = polar(angle, OUTER_FLAG_RADIUS);
   const isLoser = match.status === "finished" && Boolean(match.winner && slot.team && match.winner.teamCode !== slot.team.teamCode);
+  const advanced = Boolean(match.winner);
   return (
     <g className="cursor-pointer" onClick={onSelect}>
       <title>{matchHoverLabel(match, t)}</title>
       <circle cx={point.x} cy={point.y} fill="#000" opacity="0.001" pointerEvents="all" r={FLAG_HIT_RADIUS} />
-      <path d={slotConnectorPath(angle, match)} fill="none" stroke={selected ? "#f7d66a" : "#56534c"} strokeLinecap="round" strokeLinejoin="round" strokeWidth={selected ? 3 : 2} />
+      <path d={slotConnectorPath(angle, match)} fill="none" stroke={advanced ? advancementStroke(match.winner) : "#56534c"} strokeLinecap="round" strokeLinejoin="round" strokeOpacity={advanced ? 0.9 : undefined} strokeWidth={selected ? 3 : 2} />
       <FlagBadge dimmed={isLoser} point={point} selected={selected} team={slot.team} />
     </g>
   );
@@ -602,7 +608,7 @@ export function KnockoutRadialBracket({ matches }: { matches: KnockoutBracketMat
 
               {layout.map((match) => {
                 const isSelected = selectedMatch?.id === match.id;
-                const active = Boolean(match.winner) || isSelected;
+                const active = Boolean(match.winner);
                 return (
                   <g key={`${match.id}-incoming`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
                     <title>{matchHoverLabel(match, t.calendar)}</title>
@@ -624,10 +630,10 @@ export function KnockoutRadialBracket({ matches }: { matches: KnockoutBracketMat
                           key={`${sourceId}-${match.id}`}
                           d={connectorPath(source, match)}
                           fill="none"
-                          stroke="#5f5a50"
+                          stroke={source.winner ? advancementStroke(source.winner) : "#5f5a50"}
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeOpacity="0.48"
+                          strokeOpacity={source.winner ? 0.86 : 0.48}
                           strokeWidth="2"
                         />
                       );
@@ -643,7 +649,6 @@ export function KnockoutRadialBracket({ matches }: { matches: KnockoutBracketMat
               </g>
 
               {layout.map((match) => {
-                const isSelected = selectedMatch?.id === match.id;
                 const nodePoint = polar(match.angle, match.radius);
                 const hasNodeTarget = match.round !== "round-of-32";
 
@@ -651,9 +656,6 @@ export function KnockoutRadialBracket({ matches }: { matches: KnockoutBracketMat
                   <g key={`${match.id}-node`} className="cursor-pointer" onClick={() => selectMatch(match.id)}>
                     <title>{matchHoverLabel(match, t.calendar)}</title>
                     {hasNodeTarget ? <circle cx={nodePoint.x} cy={nodePoint.y} fill="#000" opacity="0.001" pointerEvents="all" r={NODE_HIT_RADIUS} /> : null}
-                    {isSelected ? (
-                      <text dominantBaseline="middle" fill="#f7d66a" fontSize="12" fontWeight="900" letterSpacing="1.5" textAnchor="middle" x={nodePoint.x} y={nodePoint.y + 32}>{roundLabel(t.calendar, match.round)}</text>
-                    ) : null}
                   </g>
                 );
               })}
