@@ -91,6 +91,17 @@ describe("knockout bracket", () => {
     ).toEqual(["ABCDF", "CDFGH", "CEFHI", "EHIJK", "BEFIJ", "AEHIJ", "EFGIJ", "DEIJL"]);
   });
 
+  it("uses the official round-of-16 bracket pairings for the final two matches", () => {
+    const roundOf16 = KNOCKOUT_MATCHES.filter((match) => match.round === "round-of-16");
+    const m95 = roundOf16.find((match) => match.id === "M95");
+    const m96 = roundOf16.find((match) => match.id === "M96");
+
+    expect(m95?.homeSlot).toEqual({ kind: "winner", sourceId: "M86" });
+    expect(m95?.awaySlot).toEqual({ kind: "winner", sourceId: "M88" });
+    expect(m96?.homeSlot).toEqual({ kind: "winner", sourceId: "M85" });
+    expect(m96?.awaySlot).toEqual({ kind: "winner", sourceId: "M87" });
+  });
+
   it("maps qualifying third-place groups through FIFA Annexe C", () => {
     expect(getOfficialThirdPlaceAssignments(["E", "J", "I", "F", "H", "G", "L", "K"])).toEqual(["E", "J", "I", "F", "H", "G", "L", "K"]);
     expect(getOfficialThirdPlaceAssignments(["H", "G", "B", "C", "A", "F", "D", "E"])).toEqual(["H", "G", "B", "C", "A", "F", "D", "E"]);

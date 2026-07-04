@@ -98,7 +98,7 @@ const BRACKET_LEAF_ORDER = [
   "M73", "M75", "M74", "M77",
   "M83", "M84", "M81", "M82",
   "M76", "M78", "M79", "M80",
-  "M85", "M86", "M87", "M88",
+  "M86", "M88", "M85", "M87",
 ];
 const BRACKET_LEAF_INDEX = new Map(BRACKET_LEAF_ORDER.map((id, index) => [id, index]));
 
