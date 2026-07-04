@@ -4,7 +4,7 @@ import { Button } from "@quiniela-mundial-2026/ui/components/button";
 import { cn } from "@quiniela-mundial-2026/ui/lib/utils";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { CalendarDays, Clock, Flame, ListOrdered, Target, Trophy } from "lucide-react";
+import { CalendarDays, Clock, ListOrdered, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
@@ -334,10 +334,10 @@ function PublicDashboardEmpty() {
 
 function PublicStats({ cards }: { cards: PublicDashboardStatCard[] }) {
   const { t } = useI18n();
-  const icons = [Trophy, ListOrdered, Target, Flame] as const;
+  const icons = [Trophy, ListOrdered] as const;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={t.home.summaryAria}>
+    <div className="grid gap-3 sm:grid-cols-2" aria-label={t.home.summaryAria}>
       {cards.map((card, index) => {
         const Icon = icons[index] ?? Trophy;
 
