@@ -364,3 +364,14 @@ apps/web/dist/illustrations: 12 verificados.
 
 No se modificaron los WebP, datos históricos, rutas, Convex ni recursos de
 runtime. No se hizo commit, push, PR ni deploy.
+
+## Corrección de tooling de despliegue (2026-07-19)
+
+- La ruta de producción pasa a ser `bun run deploy`: construye web y ejecuta el
+  Wrangler local con `wrangler.jsonc`, configurado como Worker assets-only para
+  `apps/web/dist` y `quiniela.luisralda.com`.
+- Alchemy permanece únicamente bajo `deploy:alchemy` y `destroy:alchemy` para
+  diagnóstico histórico. Se sustituyó porque Alchemy 0.91.2 terminó con exit 0
+  sin crear estado, DNS ni Worker.
+- Esta corrección no ejecutó un deploy real ni modificó Convex, contenido o
+  assets.
