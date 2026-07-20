@@ -181,4 +181,31 @@ describe("final dashboard snapshot", () => {
     expect(html).toContain("<noscript>");
     for (const value of ["Q ganó", "47", "Otto", "98", "España", "29", "104", "2,408", "0-0", "3 puntos"]) expect(html).toContain(value);
   });
+
+  it("declares the six responsive editorial illustrations with the required loading policy", async () => {
+    const source = await Bun.file(new URL("./final-dashboard.tsx", import.meta.url)).text();
+    const illustrations = [
+      ["01-tres-coronas", "Ilustración con una copa azul para Otto, una copa roja para Q con siete marcadores y una copa mundial abstracta junto a la bandera de España."],
+      ["02-carrera-catorce-cambios", "Pistas de colores se cruzan catorce veces hasta que la línea roja de Q termina al frente."],
+      ["03-siete-exactos", "Siete boletos de marcador forman un camino ascendente y el último se convierte en la copa roja de Q."],
+      ["04-alegria-y-golpe", "A un lado, dieciocho fichas celebran un acierto colectivo; al otro, veinte flechas fallan y una ficha acierta."],
+      ["05-salon-de-estilos", "Seis objetos deportivos representan el puntaje, los exactos, la precisión, la racha, los aciertos contra el consenso y los empates."],
+      ["06-final-nadie-clavo", "Un tablero marca una final sin goles, veintiuna fichas se dividen en grupos de ocho, cinco y ocho, y España aparece campeona."],
+    ];
+
+    expect(source).toContain("<picture");
+    expect(source).toContain('<source media="(max-width: 767px)" srcSet={mobile}/>');
+    expect(source).toContain('src={desktop}');
+    expect(source).toContain("width={width}");
+    expect(source).toContain("height={height}");
+    for (const [name, alt] of illustrations) {
+      expect(source).toContain(`/illustrations/${name}-desktop.webp`);
+      expect(source).toContain(`/illustrations/${name}-mobile.webp`);
+      expect(source).toContain(alt);
+    }
+    expect(source).toContain('fetchPriority={priority ? "high" : undefined}');
+    expect(source).toContain('loading={priority ? "eager" : "lazy"}');
+    expect(source).toContain('decoding={priority ? "auto" : "async"}');
+    expect(source.match(/priority width=/g)).toHaveLength(1);
+  });
 });

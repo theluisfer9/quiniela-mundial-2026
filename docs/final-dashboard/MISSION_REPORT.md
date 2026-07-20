@@ -321,3 +321,46 @@ exit 0
   `bun test apps/web/src/features/final-dashboard/final-dashboard.test.ts`
   informa `84 expect() calls` (incluye las expectativas ejecutadas dentro de
   los bucles del caso).
+
+## Publicación estática e ilustraciones finales (2026-07-19)
+
+### Cambios
+
+- `apps/web/src/features/final-dashboard/final-dashboard.tsx` define
+  `EditorialIllustration`: un `<picture>` con fuente móvil a `max-width: 767px`,
+  `<img>` desktop, dimensiones explícitas, `object-contain` y bordes/radios
+  coherentes. La pieza 01 es hero `eager` con prioridad alta; 02–06 son lazy y
+  decodifican de forma asíncrona. Se conservaron las cifras HTML, el SVG de
+  carrera y todas las cards, reconocimientos, marcador y poster existentes.
+- `apps/web/src/features/final-dashboard/final-dashboard.test.ts` cubre las
+  doce rutas, los seis textos alternativos literales, el `<picture>`, las
+  dimensiones y las políticas de carga.
+- `packages/infra/alchemy.run.ts` conserva app, recurso, cwd, assets, adopt y
+  dominio; se eliminaron carga de `.env` y bindings Convex. Alchemy `0.91.2`
+  implementa el fallback SPA internamente mediante `Vite` (`spa: true`), por lo
+  que no se añadió una propiedad no soportada. El log describe el sitio estático.
+
+### Verificación ejecutada
+
+```text
+export PATH="$HOME/.bun/bin:$PATH"
+bun test apps/web/src/features/final-dashboard/final-dashboard.test.ts
+17 pass, 0 fail, 111 expect() calls
+
+bun run --filter web check-types
+exit 0
+
+bun run --filter web build
+exit 0
+
+git diff --check
+exit 0
+
+Escaneo apps/web/dist de .convex.cloud, .convex.site, fonts.googleapis.com,
+flagcdn, VITE_CONVEX_URL y VITE_CONVEX_SITE_URL: 0 coincidencias.
+Los doce WebP de apps/web/public/illustrations existen bajo
+apps/web/dist/illustrations: 12 verificados.
+```
+
+No se modificaron los WebP, datos históricos, rutas, Convex ni recursos de
+runtime. No se hizo commit, push, PR ni deploy.
