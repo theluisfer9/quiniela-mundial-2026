@@ -1,11 +1,4 @@
-import { Toaster } from "@quiniela-mundial-2026/ui/components/sonner";
 import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { useEffect } from "react";
-
-import Header from "@/components/header";
-import { ThemeProvider } from "@/components/theme-provider";
-import { I18nProvider, useI18n } from "@/lib/i18n";
 
 import "../index.css";
 
@@ -15,87 +8,14 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
   head: () => ({
     meta: [
-      {
-        title: "Quiniela Mundial 2026 | Pronósticos en familia",
-      },
-      {
-        name: "description",
-        content:
-          "Quiniela familiar para cargar marcadores, seguir la tabla y jugar el Mundial 2026.",
-      },
-      {
-        name: "theme-color",
-        content: "#fff8f7",
-      },
-    ],
-    links: [
-      {
-        rel: "preconnect",
-        href: "https://fonts.googleapis.com",
-      },
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossOrigin: "",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Anybody:wght@500;600;700;800&family=Lexend:wght@400;500;600;700&display=swap",
-      },
-      {
-        rel: "icon",
-        type: "image/svg+xml",
-        href: "https://upload.wikimedia.org/wikipedia/en/1/17/2026_FIFA_World_Cup_emblem.svg",
-      },
+      { title: "La historia de la Quiniela Mundial 2026" },
+      { name: "description", content: "Resultados, campeones, cambios de líder y momentos que definieron la quiniela familiar del Mundial 2026." },
+      { name: "theme-color", content: "#fff8f7" },
+      { property: "og:image", content: "/og-final.svg" },
     ],
   }),
 });
 
 function RootComponent() {
-  return (
-    <>
-      <HeadContent />
-      <I18nProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          disableTransitionOnChange
-          enableSystem={false}
-          forcedTheme="light"
-        >
-          <RootShell />
-          <Toaster richColors />
-        </ThemeProvider>
-      </I18nProvider>
-      <TanStackRouterDevtools position="bottom-left" />
-    </>
-  );
-}
-
-function RootShell() {
-  const { t } = useI18n();
-
-  useEffect(() => {
-    document.title = t.meta.title;
-    document.querySelector('meta[name="description"]')?.setAttribute("content", t.meta.description);
-  }, [t]);
-
-  return (
-    <>
-      <a
-        href="#main-content"
-        className="sr-only fixed left-4 top-4 z-50 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-ring"
-      >
-        {t.common.skipToContent}
-      </a>
-      <div className="min-h-svh bg-[radial-gradient(circle_at_18%_0%,rgba(230,29,37,0.12),transparent_26%),radial-gradient(circle_at_92%_18%,rgba(42,57,141,0.12),transparent_24%),linear-gradient(180deg,#fff8f7_0%,#fff0ef_42%,#ffffff_100%)] text-foreground">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-          <Header />
-          <main id="main-content" tabIndex={-1} className="pb-3 pt-3 sm:pb-8 sm:pt-6">
-            <Outlet />
-          </main>
-        </div>
-      </div>
-    </>
-  );
+  return <><HeadContent /><a className="sr-only fixed left-4 top-4 z-50 rounded-xl bg-[#BD0015] px-4 py-3 text-sm font-semibold text-white focus:not-sr-only" href="#main-content">Saltar al contenido</a><Outlet /></>;
 }

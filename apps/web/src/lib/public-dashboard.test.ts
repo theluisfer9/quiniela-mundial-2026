@@ -74,8 +74,6 @@ describe("derivePublicDashboardViewModel", () => {
     expect(dashboard.statCards).toEqual([
       { label: "Lider", value: "Por definir", detail: "Entra con tu PIN" },
       { label: "Mi posicion", value: "#-", detail: "Entra con tu PIN" },
-      { label: "Aciertos perfectos", value: "0", detail: "Marcadores exactos" },
-      { label: "Racha", value: "0", detail: "Sin racha activa" },
     ]);
   });
 
@@ -121,17 +119,12 @@ describe("derivePublicDashboardViewModel", () => {
           bestExactScoreCount: 4,
         },
       },
-      playerMetrics: [
-        { name: "Ana", exactScoreCount: 3, currentStreak: 2 },
-      ],
       standings: [{ rank: 1, name: "Ana", points: 12, rankDelta: 0, isCurrentUser: false }],
     });
 
     expect(dashboard.statCards).toEqual([
       { label: "Lider", value: "Ana", detail: "🏆 12 pts" },
       { label: "Mi posicion", value: "#1", detail: "Estas en la punta" },
-      { label: "Aciertos perfectos", value: "3", detail: "Marcadores exactos" },
-      { label: "Racha", value: "🔥 2", detail: "Aciertos consecutivos" },
     ]);
   });
 

@@ -9,36 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PronosticosRouteImport } from './routes/pronosticos'
-import { Route as MarcadoresRouteImport } from './routes/marcadores'
-import { Route as ManualRouteImport } from './routes/manual'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CalendarioRouteImport } from './routes/calendario'
 import { Route as IndexRouteImport } from './routes/index'
 
-const PronosticosRoute = PronosticosRouteImport.update({
-  id: '/pronosticos',
-  path: '/pronosticos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarcadoresRoute = MarcadoresRouteImport.update({
-  id: '/marcadores',
-  path: '/marcadores',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ManualRoute = ManualRouteImport.update({
-  id: '/manual',
-  path: '/manual',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarioRoute = CalendarioRouteImport.update({
-  id: '/calendario',
-  path: '/calendario',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,100 +25,37 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/calendario': typeof CalendarioRoute
   '/dashboard': typeof DashboardRoute
-  '/manual': typeof ManualRoute
-  '/marcadores': typeof MarcadoresRoute
-  '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/calendario': typeof CalendarioRoute
   '/dashboard': typeof DashboardRoute
-  '/manual': typeof ManualRoute
-  '/marcadores': typeof MarcadoresRoute
-  '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/calendario': typeof CalendarioRoute
   '/dashboard': typeof DashboardRoute
-  '/manual': typeof ManualRoute
-  '/marcadores': typeof MarcadoresRoute
-  '/pronosticos': typeof PronosticosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/calendario'
-    | '/dashboard'
-    | '/manual'
-    | '/marcadores'
-    | '/pronosticos'
+  fullPaths: '/' | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/calendario'
-    | '/dashboard'
-    | '/manual'
-    | '/marcadores'
-    | '/pronosticos'
-  id:
-    | '__root__'
-    | '/'
-    | '/calendario'
-    | '/dashboard'
-    | '/manual'
-    | '/marcadores'
-    | '/pronosticos'
+  to: '/' | '/dashboard'
+  id: '__root__' | '/' | '/dashboard'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CalendarioRoute: typeof CalendarioRoute
   DashboardRoute: typeof DashboardRoute
-  ManualRoute: typeof ManualRoute
-  MarcadoresRoute: typeof MarcadoresRoute
-  PronosticosRoute: typeof PronosticosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/pronosticos': {
-      id: '/pronosticos'
-      path: '/pronosticos'
-      fullPath: '/pronosticos'
-      preLoaderRoute: typeof PronosticosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marcadores': {
-      id: '/marcadores'
-      path: '/marcadores'
-      fullPath: '/marcadores'
-      preLoaderRoute: typeof MarcadoresRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/manual': {
-      id: '/manual'
-      path: '/manual'
-      fullPath: '/manual'
-      preLoaderRoute: typeof ManualRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendario': {
-      id: '/calendario'
-      path: '/calendario'
-      fullPath: '/calendario'
-      preLoaderRoute: typeof CalendarioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -157,11 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CalendarioRoute: CalendarioRoute,
   DashboardRoute: DashboardRoute,
-  ManualRoute: ManualRoute,
-  MarcadoresRoute: MarcadoresRoute,
-  PronosticosRoute: PronosticosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

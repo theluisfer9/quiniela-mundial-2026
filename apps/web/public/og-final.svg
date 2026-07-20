@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">La historia de la Quiniela Mundial 2026</title>
+  <desc id="desc">Q ganó eliminatorias con 47 puntos, Otto ganó grupos con 98 y España fue campeona mundial.</desc>
+  <rect width="1200" height="630" fill="#FFF8F7"/>
+  <path d="M0 475H1200M0 540H1200" stroke="#E7BDB8" stroke-width="2"/>
+  <path d="M720 120C860 50 1030 120 1110 260" fill="none" stroke="#97A5FF" stroke-width="26"/>
+  <text x="72" y="96" fill="#BD0015" font-family="system-ui,sans-serif" font-size="24" font-weight="700">MUNDIAL 2026 · ARCHIVO FINAL</text>
+  <text x="72" y="192" fill="#2A398D" font-family="system-ui,sans-serif" font-size="72" font-weight="900">La historia de la quiniela</text>
+  <g transform="translate(80 270)"><circle cx="100" cy="100" r="90" fill="#2A398D"/><text x="100" y="118" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="62" font-weight="900">O</text><text x="100" y="224" text-anchor="middle" fill="#291715" font-family="system-ui,sans-serif" font-size="28" font-weight="800">Otto · 98</text></g>
+  <g transform="translate(390 225)"><circle cx="132" cy="132" r="120" fill="#BD0015"/><text x="132" y="155" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="86" font-weight="900">Q</text><text x="132" y="290" text-anchor="middle" fill="#291715" font-family="system-ui,sans-serif" font-size="32" font-weight="900">Q · 47</text></g>
+  <g transform="translate(800 265)"><path d="M78 0h90l-12 75c-7 48-36 75-78 75S7 123 0 75z" fill="#3CAC3B"/><path d="M45 150h66v38H45z" fill="#2A398D"/><path d="M18 188h120" stroke="#2A398D" stroke-width="18"/><text x="82" y="238" text-anchor="middle" fill="#291715" font-family="system-ui,sans-serif" font-size="28" font-weight="800">España campeona</text></g>
+  <text x="72" y="590" fill="#291715" font-family="system-ui,sans-serif" font-size="30" font-weight="700">29 participantes · 104 partidos · 2,408 predicciones · 14 cambios de líder</text>
+</svg>

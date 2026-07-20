@@ -34,12 +34,6 @@ export type PublicDashboardHeroMetrics = {
   finishedMatchCount: number;
 };
 
-export type PublicDashboardPlayerMetric = {
-  name: string;
-  exactScoreCount: number;
-  currentStreak: number;
-};
-
 export type PublicDashboardViewModel = {
   state: "loading" | "empty" | "ready";
   liveMatches: PublicDashboardMatch[];
@@ -85,7 +79,6 @@ type DerivePublicDashboardInput = {
     leaderGap: (points: number) => string;
   };
   currentPlayerName?: string | null;
-  playerMetrics?: PublicDashboardPlayerMetric[];
 };
 
 const EMPTY_STATS: PublicDashboardMatchesData["stats"] = {
@@ -111,23 +104,17 @@ function buildStatCards({
     leaderGap: (points: number) => `A ${points} ${points === 1 ? "punto" : "puntos"} del lider`,
   },
   currentPlayerName,
-  playerMetrics = [],
   standings,
 }: {
   labels?: NonNullable<DerivePublicDashboardInput["labels"]>;
   currentPlayerName?: string | null;
-  playerMetrics?: PublicDashboardPlayerMetric[];
   standings: HomeStandingsRow[];
 }): PublicDashboardStatCard[] {
   const leader = standings[0];
   const currentPlayer = currentPlayerName
     ? standings.find((row) => row.name === currentPlayerName) ?? null
     : null;
-  const currentMetrics = currentPlayerName
-    ? playerMetrics.find((row) => row.name === currentPlayerName) ?? null
-    : null;
   const leaderGap = leader && currentPlayer ? leader.points - currentPlayer.points : null;
-  const currentStreak = currentMetrics?.currentStreak ?? 0;
 
   return [
     {
@@ -139,16 +126,6 @@ function buildStatCards({
       label: labels.myPosition,
       value: currentPlayer ? `#${currentPlayer.rank}` : "#-",
       detail: leaderGap === 0 ? labels.inLead : leaderGap !== null ? labels.leaderGap(leaderGap) : labels.enterWithPin,
-    },
-    {
-      label: labels.perfectHits,
-      value: String(currentMetrics?.exactScoreCount ?? 0),
-      detail: labels.exactScores,
-    },
-    {
-      label: labels.streak,
-      value: currentStreak > 0 ? `🔥 ${currentStreak}` : "0",
-      detail: currentStreak > 0 ? labels.consecutiveHits : labels.noStreak,
     },
   ];
 }
@@ -204,7 +181,6 @@ export function derivePublicDashboardViewModel({
   currentPlayerName,
   labels,
   matches,
-  playerMetrics,
   standings,
 }: DerivePublicDashboardInput): PublicDashboardViewModel {
   if (!matches || !standings) {
@@ -218,7 +194,6 @@ export function derivePublicDashboardViewModel({
       statCards: buildStatCards({
         currentPlayerName,
         labels,
-        playerMetrics,
         standings: [],
       }),
       heroMetrics: { finishedMatchCount: EMPTY_STATS.finishedMatchCount },
@@ -244,7 +219,6 @@ export function derivePublicDashboardViewModel({
     statCards: buildStatCards({
       currentPlayerName,
       labels,
-      playerMetrics,
       standings: publicStandings,
     }),
     heroMetrics: { finishedMatchCount: matches.stats.finishedMatchCount },
