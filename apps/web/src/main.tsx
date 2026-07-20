@@ -1,6 +1,6 @@
-import { env } from "@quiniela-mundial-2026/env/web";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import "@fontsource-variable/anybody/wght.css";
+import "@fontsource-variable/lexend/wght.css";
 import ReactDOM from "react-dom/client";
 
 import Loader from "./components/loader";
@@ -43,17 +43,12 @@ window.addEventListener("unhandledrejection", (event) => {
   recoverFromStaleModule(event.reason);
 });
 
-const convex = new ConvexReactClient(env.VITE_CONVEX_URL);
-
 const router = createRouter({
   routeTree,
   defaultPreload: "intent",
   scrollRestoration: true,
   defaultPendingComponent: () => <Loader />,
   context: {},
-  Wrap: function WrapComponent({ children }: { children: React.ReactNode }) {
-    return <ConvexProvider client={convex}>{children}</ConvexProvider>;
-  },
 });
 
 declare module "@tanstack/react-router" {
