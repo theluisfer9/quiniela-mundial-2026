@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "quiniela-mundial-2026-archive",
+  "compatibility_date": "2026-07-19",
+  "assets": {
+    "directory": "apps/web/dist",
+    "not_found_handling": "single-page-application",
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [
+    {
+      "pattern": "quiniela.luisralda.com",
+      "custom_domain": true
+    }
+  ]
+}

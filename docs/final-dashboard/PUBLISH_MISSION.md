@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Integrar las doce ilustraciones WebP finales ya presentes en `apps/web/public/illustrations/` y dejar `packages/infra/alchemy.run.ts` listo para publicar el dashboard histórico como frontend estático en Cloudflare, sin Convex ni backend en runtime.
+Integrar las doce ilustraciones WebP finales ya presentes en `apps/web/public/illustrations/` y publicar el dashboard histórico como frontend estático en Cloudflare mediante Wrangler Static Assets, sin Convex ni backend en runtime.
 
 ## Restricciones absolutas
 
@@ -51,13 +51,16 @@ En `apps/web/src/features/final-dashboard/final-dashboard.tsx`:
 
 ## Cloudflare estático
 
-En `packages/infra/alchemy.run.ts`:
+La ruta de producción es `bun run deploy`: construye `apps/web` y ejecuta el
+Wrangler local con `wrangler.jsonc`. La configuración publica los assets de
+`apps/web/dist` como SPA en `quiniela.luisralda.com`.
 
-- Mantener la app `quiniela-mundial-2026`, recurso `web`, `cwd: "../../apps/web"`, assets `dist`, adopt y dominio `quiniela.luisralda.com`.
-- Eliminar completamente `VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL` y cualquier `bindings`/`alchemy.env` asociado.
+Alchemy queda disponible solo como `bun run deploy:alchemy` y
+`bun run destroy:alchemy` para diagnóstico histórico. Se sustituyó porque
+Alchemy 0.91.2 terminó con exit 0 sin crear estado, DNS ni Worker.
+
 - No agregar backend, Worker API ni binding sustituto.
-- Mantener una configuración Vite/Cloudflare compatible con SPA fallback. Usa solo opciones válidas para la versión instalada de Alchemy; si el recurso Vite ya provee fallback, no inventes una propiedad.
-- El log final debe describir explícitamente que es un archivo estático.
+- No ejecutar deploy real durante esta misión.
 
 ## Verificación obligatoria
 
